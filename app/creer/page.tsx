@@ -158,7 +158,7 @@ export default function Creer() {
           {lettres && <span className="text-xs italic text-accent">{lettres}</span>}
         </label>
 
-        {/* Upsell signature avancée (on insiste + alerte ≥ 500 €) */}
+        {/* Upsell signature avancée (on insiste + alerte ≥ 200 €) */}
         {eligible && (
           <div className="rounded-2xl border-2 border-accent/40 bg-accent-soft p-4">
             <div className="flex items-center gap-1.5 font-bold text-ink">

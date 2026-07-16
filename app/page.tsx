@@ -80,7 +80,7 @@ export default function Home() {
           <span className="flex items-center gap-2"><Check size={16} className="text-credit" /> Signature en un clic</span>
           <span className="flex items-center gap-2"><Check size={16} className="text-credit" /> Gratuit pour signer</span>
           <span className="flex items-center gap-2"><Check size={16} className="text-credit" /> Montant en toutes lettres</span>
-          <span className="flex items-center gap-2"><Check size={16} className="text-credit" /> Signature eIDAS dès 500 €</span>
+          <span className="flex items-center gap-2"><Check size={16} className="text-credit" /> Signature eIDAS dès 200 €</span>
         </div>
       </section>
 
@@ -113,7 +113,7 @@ export default function Home() {
           <Feature
             img="/feat-preuve.png"
             title="Une vraie preuve"
-            text="Montant en toutes lettres, date, horodatage. Au-dessus de 500 €, signature électronique opposable."
+            text="Montant en toutes lettres, date, horodatage. Dès 200 €, signature électronique opposable."
           />
         </div>
       </section>
