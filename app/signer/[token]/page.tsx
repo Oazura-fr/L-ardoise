@@ -18,7 +18,7 @@ export default async function SignerPage({ params }: { params: { token: string }
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
     .select(
-      "id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name), debtor_profile:profiles!debtor_user_id(first_name)"
+      "id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name, last_name, birth_date, address), debtor_profile:profiles!debtor_user_id(first_name, last_name, birth_date, address)"
     )
     .eq("id", params.token)
     .single();
