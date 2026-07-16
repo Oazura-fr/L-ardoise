@@ -16,14 +16,22 @@ html {
 }
 
 body {
-  background: var(--paper);
+  background: #f6f0e1;
   color: var(--ink);
-  font-feature-settings: "tnum" 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #121218;
-    --ink: #ecebf7;
-  }
+/* Animations de la landing (respectent prefers-reduced-motion) */
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-fadeup { animation: fadeup 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.floaty { animation: floaty 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeup, .floaty { animation: none; }
 }
