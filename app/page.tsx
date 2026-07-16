@@ -67,7 +67,7 @@ export default function Home() {
         <div className="animate-fadeup [animation-delay:120ms]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/hero.png"
+            src="/hero.webp"
             alt="Deux amis, l'un prête un billet à l'autre, une ardoise note la dette"
             className="floaty w-full rounded-3xl shadow-pop"
           />
@@ -96,7 +96,7 @@ export default function Home() {
         </div>
         <div className="mt-12 grid gap-10 sm:grid-cols-3">
           <Feature
-            img="/feat-sign.png"
+            img="/feat-sign.webp"
             title="Signée par lien"
             text="Ton proche reçoit le lien sur WhatsApp et signe en un clic, sans installer l'app. Gratuit, 10 secondes."
             badge={
@@ -106,12 +106,12 @@ export default function Home() {
             }
           />
           <Feature
-            img="/feat-relance.png"
+            img="/feat-relance.webp"
             title="Relances sans malaise"
             text="L'app relance à ta place, gentiment, à l'échéance : par notification et par email. Fini le SMS gênant."
           />
           <Feature
-            img="/feat-preuve.png"
+            img="/feat-preuve.webp"
             title="Une vraie preuve"
             text="Montant en toutes lettres, date, horodatage. Dès 200 €, signature électronique opposable."
           />
@@ -224,9 +224,11 @@ function Feature({
 }) {
   return (
     <div className="text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={img} alt="" className="mx-auto h-44 w-44 object-contain" />
-      <h3 className="mt-2 font-display text-xl font-bold">{title}</h3>
+      <div className="mx-auto overflow-hidden rounded-3xl border border-line bg-white shadow-card transition-transform hover:-translate-y-1">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt="" className="aspect-square w-full object-cover" />
+      </div>
+      <h3 className="mt-5 font-display text-xl font-bold">{title}</h3>
       <p className="mx-auto mt-2 max-w-xs text-sm text-inksoft">{text}</p>
       {badge ? <div className="mt-3 flex justify-center">{badge}</div> : null}
     </div>
