@@ -21,7 +21,7 @@ export default function Connexion() {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password: pass });
     setLoading(false);
     if (err) return setError(err.message);
-    window.location.href = "/";
+    window.location.href = "/app";
   }
 
   return (
