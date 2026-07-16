@@ -8,7 +8,13 @@ export default function AuthCta({ className }: { className?: string }) {
 
   useEffect(() => {
     if (!supabase) { setLoggedIn(false); return; }
-    supabase.auth.getSession().then(({ data: { session } }) => setLoggedIn(!!session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setLoggedIn(!!session);
+      // Arrivée depuis la confirmation d'email (#access_token) → on file au dashboard.
+      if (session && typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+        window.location.replace("/app");
+      }
+    });
   }, []);
 
   const href = loggedIn ? "/app" : "/inscription";
