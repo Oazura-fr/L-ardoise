@@ -51,20 +51,31 @@ export async function notifySigned(ackId: string, origin: string): Promise<void>
   } catch { /* on envoie sans PJ si le PDF échoue */ }
 
   const montant = euros(a.amount_cents);
-  const motif = a.motif ? ` (${a.motif})` : "";
   const appUrl = `${origin}/r/${ackId}`;
 
   const jobs: Promise<boolean>[] = [];
 
+  const cardCommon = {
+    amount: montant,
+    amountLabel: "Reconnaissance signée",
+    fromLabel: "Prêteur",
+    fromName: creditorName,
+    toLabel: "Emprunteur",
+    toName: debtorName,
+    motif: a.motif || null,
+    ctaLabel: "Voir la reconnaissance",
+    ctaUrl: appUrl,
+  };
+
   if (creditorEmail) {
     jobs.push(sendEmail({
       to: [{ email: creditorEmail, name: creditorName }],
-      subject: `✍️ ${debtorName} a signé la reconnaissance de ${montant}`,
+      subject: `${debtorName} a signé la reconnaissance de ${montant}`,
       html: brandedEmail({
+        ...cardCommon,
         heading: "La reconnaissance est signée 🎉",
-        bodyHtml: `Bonne nouvelle ${creditorName} : <b>${debtorName}</b> vient de signer électroniquement la reconnaissance de dette de <b>${montant}</b>${motif}.<br><br>Le document signé (avec valeur de preuve) est <b>en pièce jointe</b> — garde-le précieusement. Tu peux suivre les remboursements à tout moment sur ton ardoise.`,
-        ctaLabel: "Voir la reconnaissance",
-        ctaUrl: appUrl,
+        bodyHtml: `Bonne nouvelle ${creditorName} : <b>${debtorName}</b> vient de signer électroniquement la reconnaissance. Le document a valeur de preuve — garde-le précieusement, et suis les remboursements quand tu veux sur ton ardoise.`,
+        attachmentNote: "Le PDF signé (valeur de preuve) est en <b>pièce jointe</b>.",
       }),
       attachments,
     }));
@@ -75,10 +86,10 @@ export async function notifySigned(ackId: string, origin: string): Promise<void>
       to: [{ email: debtorEmail, name: debtorName }],
       subject: `Ta signature est enregistrée — reconnaissance de ${montant}`,
       html: brandedEmail({
+        ...cardCommon,
         heading: "Merci, ta signature est enregistrée ✅",
-        bodyHtml: `${debtorName}, tu viens de signer la reconnaissance de dette de <b>${montant}</b>${motif} envers <b>${creditorName}</b>.<br><br>Voici <b>ton exemplaire</b> en pièce jointe. Quand tu rembourses (même en plusieurs fois), tout est suivi automatiquement — pas de mauvaise surprise entre vous.`,
-        ctaLabel: "Voir la reconnaissance",
-        ctaUrl: appUrl,
+        bodyHtml: `${debtorName}, ta signature de la reconnaissance envers <b>${creditorName}</b> est bien enregistrée. Voici <b>ton exemplaire</b>. Quand tu rembourses (même en plusieurs fois), tout est suivi automatiquement — pas de mauvaise surprise entre vous.`,
+        attachmentNote: "Ton exemplaire signé est en <b>pièce jointe</b>.",
       }),
       attachments,
     }));
