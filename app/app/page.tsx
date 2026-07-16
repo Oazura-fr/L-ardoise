@@ -37,6 +37,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [prenom, setPrenom] = useState("");
+  const [mePhoto, setMePhoto] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
@@ -52,8 +53,9 @@ export default function Dashboard() {
       }
       const uid = session.user.id;
 
-      const { data: prof } = await supabase.from("profiles").select("first_name").eq("id", uid).single();
+      const { data: prof } = await supabase.from("profiles").select("first_name, photo_url").eq("id", uid).single();
       setPrenom(prof?.first_name || "");
+      setMePhoto(prof?.photo_url || null);
 
       const { data } = await supabase
         .from("acknowledgments")
@@ -119,8 +121,16 @@ export default function Dashboard() {
       </header>
 
       <div className="mx-auto max-w-3xl px-5">
-        {prenom && <p className="text-inksoft">Salut <span className="font-semibold text-ink">{prenom}</span> 👋</p>}
-        <p className="mt-0.5 font-display text-lg italic text-inksoft">« Les bons comptes font les bons amis. »</p>
+        <div className="flex items-center gap-3">
+          {mePhoto && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={mePhoto} alt="" className="h-11 w-11 rounded-full object-cover" />
+          )}
+          <div>
+            {prenom && <p className="text-inksoft">Salut <span className="font-semibold text-ink">{prenom}</span> 👋</p>}
+            <p className="font-display text-base italic text-inksoft">« Les bons comptes font les bons amis. »</p>
+          </div>
+        </div>
 
         {/* Solde */}
         <section className="mt-3 rounded-3xl border border-line bg-card p-6 shadow-card">

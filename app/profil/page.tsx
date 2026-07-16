@@ -17,6 +17,7 @@ export default function Profil() {
   const [naissance, setNaissance] = useState("");
   const [adresse, setAdresse] = useState("");
   const [uid, setUid] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -28,16 +29,30 @@ export default function Profil() {
       setUid(session.user.id);
       setEmail(session.user.email || "");
       const { data } = await supabase.from("profiles")
-        .select("first_name, last_name, phone, birth_date, address, plan")
+        .select("first_name, last_name, phone, birth_date, address, plan, photo_url")
         .eq("id", session.user.id).single();
       if (data) {
         setPrenom(data.first_name || ""); setNom(data.last_name || "");
         setTel(data.phone || ""); setNaissance(data.birth_date || "");
         setAdresse(data.address || ""); setPlan(data.plan || "gratuit");
+        setPhotoUrl(data.photo_url || null);
       }
       setReady(true);
     })();
   }, [router]);
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f || !supabase || !uid) return;
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${uid}/profil.${ext}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, f, { upsert: true });
+    if (upErr) return;
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    const url = `${data.publicUrl}?v=${Date.now()}`;
+    await supabase.from("profiles").update({ photo_url: url }).eq("id", uid);
+    setPhotoUrl(url);
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -64,9 +79,14 @@ export default function Profil() {
         <h1 className="font-display text-2xl font-bold">Mon profil</h1>
 
         <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-card p-4 shadow-card">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-accent text-lg font-bold text-white">
-            {(prenom[0] || "M").toUpperCase()}
-          </div>
+          <label className="relative cursor-pointer">
+            <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-accent text-lg font-bold text-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {photoUrl ? <img src={photoUrl} alt="" className="h-full w-full object-cover" /> : (prenom[0] || "M").toUpperCase()}
+            </div>
+            <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-card bg-slate2 text-[11px]">📷</span>
+            <input type="file" accept="image/*" className="hidden" onChange={onPhoto} />
+          </label>
           <div className="min-w-0">
             <div className="font-semibold">{prenom} {nom}</div>
             <div className="truncate text-sm text-inksoft">{email}</div>

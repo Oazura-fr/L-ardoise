@@ -1,4 +1,5 @@
 import { ArrowRight, Check, Share2, Sparkles } from "lucide-react";
+import AuthCta from "@/components/AuthCta";
 
 export default function Home() {
   return (
@@ -15,12 +16,7 @@ export default function Home() {
           </div>
           <span className="font-display text-xl font-bold tracking-tight">L&apos;Ardoise</span>
         </div>
-        <a
-          href="/inscription"
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
-        >
-          Créer mon ardoise
-        </a>
+        <AuthCta className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5" />
       </header>
 
       {/* Hero */}
