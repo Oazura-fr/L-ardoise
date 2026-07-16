@@ -102,10 +102,6 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     const t = clean(text); const w = f.widthOfTextAtSize(t, size);
     page.drawText(t, { x: xRight - w, y: yy, size, font: f, color });
   };
-  const centerAt = (text: string, yy: number, f: PDFFont, size: number, color = C.ink) => {
-    const t = clean(text); const w = f.widthOfTextAtSize(t, size);
-    page.drawText(t, { x: (PW - w) / 2, y: yy, size, font: f, color });
-  };
   const spaced = (text: string, x: number, yy: number, f: PDFFont, size: number, color: any, ls: number) => {
     let cx = x;
     for (const ch of clean(text)) { page.drawText(ch, { x: cx, y: yy, size, font: f, color }); cx += f.widthOfTextAtSize(ch, size) + ls; }
@@ -223,35 +219,41 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   }
   y -= 12;
 
-  // ====================== BLOC SIGNATURE ======================
-  const sigH = 52;
-  if (signed) {
-    roundRect(M, y, CW, sigH, 12, { color: C.creditSoft, borderColor: C.credit, borderWidth: 1.2 });
-    // pastille + check
-    const cx = M + 26, cyc = y - sigH / 2;
-    page.drawCircle({ x: cx, y: cyc, size: 11, color: C.credit });
-    page.drawSvgPath("M -4 0 L -1.2 3 L 5 -4.5", { x: cx, y: cyc, borderColor: C.white, borderWidth: 2 });
-    at(`Signée électroniquement${signedAt ? ` le ${signedAt}` : ""}`, M + 48, y - 22, helvB, 11, C.credit);
-    const mode = sig?.type === "eidas_avancee" ? "signature électronique avancée eIDAS" : "signature par lien horodaté";
-    at(`Validée par ${debtorName} · ${mode} · empreinte conservée par L'Ardoise.`, M + 48, y - 37, helv, 8.5, C.inksoft);
-  } else {
-    roundRect(M, y, CW, sigH, 12, { color: C.amberSoft, borderColor: C.amber, borderWidth: 1.2 });
-    const cx = M + 26, cyc = y - sigH / 2;
-    page.drawCircle({ x: cx, y: cyc, size: 11, color: C.amber });
-    at("!", cx - helvB.widthOfTextAtSize("!", 13) / 2, cyc - 4.5, helvB, 13, C.white);
-    at("En attente de signature électronique", M + 48, y - 22, helvB, 11, C.amber);
-    at(`${debtorName} n'a pas encore signé cette reconnaissance.`, M + 48, y - 37, helv, 8.5, C.inksoft);
+  // ====================== ZONE DE SIGNATURE (position FIXE = cible du champ Yousign) ======================
+  // Le champ de signature Yousign (lib/yousign.ts) est placé pour tomber EXACTEMENT dans cette
+  // case réservée → il ne recouvre jamais le texte. Coordonnées PDF (origine en bas à gauche) :
+  //   case : x=[M .. M+SIG_W], y=[SIG_BOTTOM .. SIG_TOP]. Champ Yousign : voir SIGN_FIELD ci-dessous.
+  const ftH = 74;
+  const SIG_W = 300, SIG_H = 74, SIG_TOP = 214, SIG_BOTTOM = SIG_TOP - SIG_H;
+
+  at(`Fait le ${frDate(a.loan_date)}, pour valoir ce que de droit.`, M, SIG_TOP + 16, helv, 9.5, C.inksoft);
+  // rappel de marque, centré dans l'espace à droite de la case de signature
+  {
+    const rc = (M + SIG_W + 20 + PW - M) / 2; // centre de la zone à droite de la case
+    const cAtX = (t: string, yy: number, f: PDFFont, size: number, color: any) =>
+      page.drawText(clean(t), { x: rc - f.widthOfTextAtSize(clean(t), size) / 2, y: yy, size, font: f, color });
+    page.drawCircle({ x: rc, y: SIG_TOP - 20, size: 20, color: C.chalk, borderColor: C.line, borderWidth: 1 });
+    cAtX("€", SIG_TOP - 27, helvB, 20, C.accent);
+    cAtX("l-ardoise.fr", SIG_TOP - 56, helvB, 11, C.inksoft);
+    cAtX("gardez vos amitiés,", SIG_TOP - 69, helv, 8, C.faint);
+    cAtX("pas vos ardoises", SIG_TOP - 80, helv, 8, C.faint);
   }
 
-  // ====================== MÉDAILLON DE MARQUE (comble le vide) ======================
-  const ftH = 74;
-  if (y - ftH > 130) {
-    const cyw = (y + ftH) / 2 + 6;
-    page.drawCircle({ x: PW / 2, y: cyw + 14, size: 22, color: C.chalk, borderColor: C.line, borderWidth: 1 });
-    const ew2 = helvB.widthOfTextAtSize("€", 22);
-    at("€", PW / 2 - ew2 / 2, cyw + 6, helvB, 22, C.accent);
-    centerAt("l-ardoise.fr", cyw - 22, helvB, 12, C.inksoft);
-    centerAt("gardez vos amitiés, pas vos ardoises", cyw - 37, helv, 8.5, C.faint);
+  if (signed) {
+    roundRect(M, SIG_TOP, SIG_W, SIG_H, 12, { color: C.creditSoft, borderColor: C.credit, borderWidth: 1.2 });
+    spaced("SIGNATURE DE L'EMPRUNTEUR", M + 16, SIG_TOP - 18, helvB, 7.5, C.credit, 1);
+    const cx = M + 26, cyc = SIG_TOP - 44;
+    page.drawCircle({ x: cx, y: cyc, size: 11, color: C.credit });
+    page.drawSvgPath("M -4 0 L -1.2 3 L 5 -4.5", { x: cx, y: cyc, borderColor: C.white, borderWidth: 2 });
+    at(`Signé électroniquement${signedAt ? ` le ${signedAt}` : ""}`, M + 46, SIG_TOP - 40, helvB, 10.5, C.credit);
+    const mode = sig?.type === "eidas_avancee" ? "signature avancée eIDAS · empreinte conservée par L'Ardoise" : "signature par lien horodaté · L'Ardoise";
+    at(mode, M + 46, SIG_TOP - 54, helv, 8, C.inksoft);
+  } else {
+    roundRect(M, SIG_TOP, SIG_W, SIG_H, 12, { color: C.white, borderColor: C.line, borderWidth: 1 });
+    spaced("SIGNATURE DE L'EMPRUNTEUR", M + 16, SIG_TOP - 18, helvB, 7.5, C.faint, 1);
+    rightAt(`(${debtorName})`, M + SIG_W - 16, SIG_TOP - 18, helv, 7.5, C.faint);
+    // l'intérieur de la case reste VIDE : le champ Yousign y dessine la signature
+    at("Signature électronique horodatée via L'Ardoise", M + 16, SIG_BOTTOM - 13, helv, 7.5, C.faint);
   }
 
   // ====================== BANDEAU PUB (pied de page) ======================

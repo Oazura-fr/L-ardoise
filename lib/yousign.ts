@@ -61,7 +61,10 @@ export async function createSignatureLink(opts: {
     info,
     signature_level: "electronic_signature",
     signature_authentication_mode: "no_otp",
-    fields: [{ document_id: doc.id, type: "signature", page: 1, x: 60, y: 120, width: 180, height: 60 }],
+    // Positionné pour tomber dans la case "SIGNATURE DE L'EMPRUNTEUR" réservée par /api/pdf
+    // (origine Yousign = coin haut-gauche, y vers le bas, en points ; page A4 h=841.89).
+    // Case PDF x[50..350] y[140..214] → champ dans sa moitié basse, sous le libellé.
+    fields: [{ document_id: doc.id, type: "signature", page: 1, x: 64, y: 660, width: 272, height: 40 }],
   });
 
   // 4) Activation
