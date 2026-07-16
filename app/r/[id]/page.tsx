@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { euros } from "@/lib/montant";
-import { ArrowLeft, Loader2, FileText, Check } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Check, MessageCircle } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
 
@@ -30,6 +30,8 @@ export default function ReconnaissanceDetail() {
   const [uid, setUid] = useState<string | null>(null);
   const [ack, setAck] = useState<Ack | null>(null);
   const [ready, setReady] = useState(false);
+  const [msgs, setMsgs] = useState<{ id: string; sender_user_id: string | null; body: string; created_at: string }[]>([]);
+  const [text, setText] = useState("");
 
   // form remboursement
   const [open, setOpen] = useState(false);
@@ -49,8 +51,24 @@ export default function ReconnaissanceDetail() {
       .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)")
       .eq("id", id).single();
     setAck((data as unknown as Ack) || null);
+    const { data: m } = await supabase
+      .from("ack_messages").select("id, sender_user_id, body, created_at")
+      .eq("ack_id", id).order("created_at", { ascending: true });
+    setMsgs(m || []);
     setReady(true);
   }, [id, router]);
+
+  async function sendMsg(e: React.FormEvent) {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body || !supabase || !ack) return;
+    setText("");
+    await supabase.from("ack_messages").insert({ ack_id: ack.id, sender_user_id: uid, body });
+    const { data: m } = await supabase
+      .from("ack_messages").select("id, sender_user_id, body, created_at")
+      .eq("ack_id", ack.id).order("created_at", { ascending: true });
+    setMsgs(m || []);
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -165,6 +183,31 @@ export default function ReconnaissanceDetail() {
           <FileText size={15} /> Voir la reconnaissance
         </a>
       </div>
+
+      {/* Discussion */}
+      <section className="mt-5 rounded-3xl border border-line bg-card p-5 shadow-card">
+        <div className="mb-3 flex items-center gap-2 font-bold"><MessageCircle size={17} className="text-accent" /> Discussion avec {cp}</div>
+        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+          {msgs.length === 0 ? (
+            <p className="py-4 text-center text-sm text-inksoft">Pas encore de message. Écris un mot à {cp} 👋</p>
+          ) : (
+            msgs.map((m) => {
+              const mine = m.sender_user_id === uid;
+              return (
+                <div key={m.id} className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${mine ? "self-end bg-accent text-white" : "self-start border border-line bg-white"}`}>
+                  {!mine && <div className="mb-0.5 text-xs font-semibold text-inksoft">{cp}</div>}
+                  {m.body}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <form onSubmit={sendMsg} className="mt-3 flex gap-2">
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris un message…"
+            className="flex-1 rounded-full border border-line bg-paper px-4 py-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-accent" />
+          <button type="submit" className="grid h-10 w-10 flex-none place-items-center rounded-full bg-accent text-white">➤</button>
+        </form>
+      </section>
     </main>
   );
 }

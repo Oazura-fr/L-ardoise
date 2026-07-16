@@ -154,6 +154,19 @@ create table messages (
 );
 create index on messages(conversation_id, created_at);
 
+-- Messagerie simplifiée : un fil par reconnaissance (accès via les parties)
+create table ack_messages (
+  id             uuid primary key default gen_random_uuid(),
+  ack_id         uuid not null references acknowledgments(id) on delete cascade,
+  sender_user_id uuid references profiles(id) on delete set null,
+  body           text not null,
+  created_at     timestamptz not null default now()
+);
+create index ack_messages_ack_idx on ack_messages(ack_id, created_at);
+alter table ack_messages enable row level security;
+create policy "ack_messages via ack" on ack_messages for all
+  using (can_access_ack(ack_id)) with check (can_access_ack(ack_id));
+
 -- ============================================================
 -- 8. Relances & facturation
 -- ============================================================
