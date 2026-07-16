@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { euros } from "@/lib/montant";
 import { Plus, LogOut, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 
 type Ack = {
   id: string;
@@ -157,10 +158,11 @@ export default function Dashboard() {
 
       <a
         href="/creer"
-        className="fixed bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop"
+        className="fixed bottom-[4.75rem] left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop"
       >
         <Plus size={20} /> Nouvelle reconnaissance
       </a>
+      <BottomNav />
     </main>
   );
 }

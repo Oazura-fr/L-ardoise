@@ -20,9 +20,17 @@ type Ack = {
   creditor_user_id: string | null;
   debtor_user_id: string | null;
   repayments: { id: string; amount_cents: number; method: string; paid_on: string }[];
-  debtor_contact: { first_name: string } | null;
-  creditor_contact: { first_name: string } | null;
+  debtor_contact: { first_name: string; phone: string | null } | null;
+  creditor_contact: { first_name: string; phone: string | null } | null;
 };
+
+function waLink(phone: string | null, msg: string): string {
+  const text = encodeURIComponent(msg);
+  if (!phone) return `https://wa.me/?text=${text}`;
+  let d = phone.replace(/\D/g, "");
+  if (d.startsWith("0")) d = "33" + d.slice(1);
+  return `https://wa.me/${d}?text=${text}`;
+}
 
 export default function ReconnaissanceDetail() {
   const router = useRouter();
@@ -50,7 +58,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     setAck((data as unknown as Ack) || null);
     const { data: m } = await supabase
@@ -79,6 +87,7 @@ export default function ReconnaissanceDetail() {
 
   const iAmCreditor = ack.creditor_user_id === uid;
   const cp = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.first_name || "—";
+  const cpPhone = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.phone || null;
   const repaid = ack.repayments.reduce((s, r) => s + r.amount_cents, 0);
   const remaining = ack.amount_cents - repaid;
   const settled = remaining <= 0;
@@ -155,6 +164,13 @@ export default function ReconnaissanceDetail() {
             className="mt-5 w-full rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop">
             💸 Enregistrer un remboursement
           </button>
+        )}
+        {!settled && iAmCreditor && (
+          <a href={waLink(cpPhone, `Coucou ${cp} 👋 Petit rappel amical : il reste ${euros(remaining)} sur notre ardoise. Merci ! 🙏`)}
+            target="_blank" rel="noreferrer"
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-3 font-semibold text-white">
+            🔔 Relancer sur WhatsApp
+          </a>
         )}
         {settled && (
           <div className="mt-5 flex animate-fadeup items-center justify-center gap-2 rounded-2xl bg-credit-soft py-3 font-bold text-credit">

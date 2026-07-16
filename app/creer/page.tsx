@@ -175,6 +175,12 @@ export default function Creer() {
           </div>
         )}
 
+        {principal >= 500000 && (
+          <div className="rounded-xl bg-paper px-4 py-3 text-xs text-inksoft">
+            💡 <b>Prêt supérieur à 5 000 €</b> : pense à le déclarer à l&apos;administration fiscale (formulaire n° 2062) avec ta déclaration de revenus.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">Le proche
             <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Pierre" className={inp} /></label>
