@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address)")
+    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on), creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address)")
     .eq("id", params.token)
     .single();
   if (!ack) return NextResponse.json({ error: "introuvable" }, { status: 404 });
@@ -66,6 +66,9 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   const isAdv = a.signature_required === "eidas_avancee";
   const fee = isAdv ? ADV_FEE_CENTS : 0;
   const principal = a.amount_cents - fee;
+  const reps = ((a.repayments || []) as any[]).slice().sort((x, y) => (x.paid_on || "").localeCompare(y.paid_on || ""));
+  const repaid = reps.reduce((s, r) => s + r.amount_cents, 0);
+  const remaining = a.amount_cents - repaid;
 
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595.28, 841.89]);
@@ -119,6 +122,14 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   para("Identité des parties", bold, 11, ink, 2, 15);
   para(`Créancier : ${creditor}.`, font, 11, ink, 2, 15);
   para(`Débiteur : ${debtor}.`, font, 11, ink, 10, 15);
+
+  if (repaid > 0) {
+    para("Suivi des remboursements", bold, 11, ink, 2, 15);
+    for (const r of reps) {
+      para(`- Le ${frDate(r.paid_on)} : ${euros(r.amount_cents)} (${r.method}).`, font, 10.5, ink, 1, 14);
+    }
+    para(`Déjà remboursé : ${euros(repaid)}  —  Restant dû : ${euros(remaining)}.`, bold, 11, ink, 10, 15);
+  }
 
   para("Somme exprimée en chiffres et en toutes lettres. Conformément à l'article 1376 du Code civil, en cas de différence, la somme exprimée en toutes lettres prévaut.", font, 9.5, grey, 14, 13);
 

@@ -49,7 +49,7 @@ export default function ReconnaissanceDetail() {
   const [date, setDate] = useState("2026-07-16");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [flash, setFlash] = useState<string | null>(null);
+  const [lastRep, setLastRep] = useState<{ id: string; amount: number; remaining: number; settled: boolean } | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setReady(true); return; }
@@ -105,25 +105,42 @@ export default function ReconnaissanceDetail() {
     const iAmCred = ack.creditor_user_id === uid;
     const cpName = (iAmCred ? ack.debtor_contact : ack.creditor_contact)?.first_name || "ton proche";
     setBusy(true);
-    const { error: err } = await supabase.from("repayments").insert({
+    const { data: newRep, error: err } = await supabase.from("repayments").insert({
       ack_id: ack.id, amount_cents: capped, method, paid_on: date, created_by: uid,
-    });
+    }).select("id").single();
     setBusy(false);
     if (err) return setError(err.message);
     setOpen(false); setAmt("");
     await load();
-    if (becameSettled) {
-      fireConfetti();
-      setFlash(`🎉 Ardoise soldée avec ${cpName} !`);
-    } else {
-      setFlash(`💸 ${euros(capped)} enregistrés`);
-    }
-    setTimeout(() => setFlash(null), 3000);
+    if (becameSettled) fireConfetti();
+    void cpName;
+    setLastRep({ id: newRep?.id || "", amount: capped, remaining: Math.max(0, remaining - capped), settled: becameSettled });
   }
 
   return (
     <main className="mx-auto max-w-lg px-5 py-6">
       <a href="/app" className="inline-flex items-center gap-1 text-sm font-semibold text-inksoft"><ArrowLeft size={15} /> Mon ardoise</a>
+
+      {lastRep && (
+        <div className="mt-3 animate-fadeup rounded-2xl border border-credit bg-credit-soft p-4">
+          <div className="font-bold text-credit">{lastRep.settled ? "🎉 Ardoise soldée !" : `✓ Remboursement de ${euros(lastRep.amount)} enregistré`}</div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <a
+              href={waLink(cpPhone, iAmCreditor
+                ? (lastRep.settled ? `Merci ${cp} 🎉 Ardoise soldée, on est quittes !` : `Merci ${cp} 👋 Bien reçu ton remboursement de ${euros(lastRep.amount)}. Il te reste ${euros(lastRep.remaining)} sur notre ardoise. 🙏`)
+                : (lastRep.settled ? `Je viens de te rembourser ${euros(lastRep.amount)} — on est quittes ! 🎉` : `Je viens de te rembourser ${euros(lastRep.amount)}. Il reste ${euros(lastRep.remaining)}. 👍`))}
+              target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white">
+              📲 Confirmer à {cp}
+            </a>
+            <a href={`/api/recu/${lastRep.id}`} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink">
+              📄 Reçu
+            </a>
+            <button onClick={() => setLastRep(null)} className="px-2 text-sm font-semibold text-inksoft">Fermer</button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-3xl border border-line bg-card p-6 shadow-card">
         <div className="flex items-center gap-3">
@@ -153,7 +170,7 @@ export default function ReconnaissanceDetail() {
         <div className="mt-5 space-y-3">
           <Event mk="€" bg={iAmCreditor ? "bg-credit" : "bg-debit"} t={iAmCreditor ? "Prêt accordé" : "Emprunt"} d={`${frDate(ack.loan_date)} · ${ack.method}`} v={euros(ack.amount_cents)} />
           {[...ack.repayments].sort((a, b) => a.paid_on.localeCompare(b.paid_on)).map((r) => (
-            <Event key={r.id} mk="↩" bg="bg-credit" t="Remboursement" d={`${frDate(r.paid_on)} · ${r.method}`} v={`− ${euros(r.amount_cents)}`} />
+            <Event key={r.id} mk="↩" bg="bg-credit" t="Remboursement" d={`${frDate(r.paid_on)} · ${r.method}`} v={`− ${euros(r.amount_cents)}`} href={`/api/recu/${r.id}`} />
           ))}
           {settled && <Event mk="✓" bg="bg-credit" t="Soldé 🎉" d="Ardoise effacée" v="" />}
         </div>
@@ -242,22 +259,20 @@ export default function ReconnaissanceDetail() {
         </form>
       </section>
 
-      {flash && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fadeup rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-pop">
-          {flash}
-        </div>
-      )}
     </main>
   );
 }
 
-function Event({ mk, bg, t, d, v }: { mk: string; bg: string; t: string; d: string; v: string }) {
+function Event({ mk, bg, t, d, v, href }: { mk: string; bg: string; t: string; d: string; v: string; href?: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className={`grid h-6 w-6 flex-none place-items-center rounded-full text-xs text-white ${bg}`}>{mk}</span>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold leading-tight">{t}</div>
-        <div className="text-xs text-inksoft">{d}</div>
+        <div className="text-xs text-inksoft">
+          {d}
+          {href && <> · <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-accent">reçu</a></>}
+        </div>
       </div>
       <div className="text-sm font-bold tabular-nums">{v}</div>
     </div>
