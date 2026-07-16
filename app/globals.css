@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f5f5f2;
+  --ink: #1b1a2e;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-feature-settings: "tnum" 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121218;
+    --ink: #ecebf7;
+  }
+}
