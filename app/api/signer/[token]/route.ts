@@ -37,6 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       last_name: identity.last_name || null,
       birth_date: identity.birth_date || null,
       address: identity.address || null,
+      email: identity.email || null,
     },
   };
 

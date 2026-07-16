@@ -20,12 +20,14 @@ export default function SignForm({
   const [nom, setNom] = useState("");
   const [naissance, setNaissance] = useState("");
   const [adresse, setAdresse] = useState("");
+  const [emailS, setEmailS] = useState("");
 
   async function sign() {
     setError(null);
     if (!prenom.trim() || !nom.trim()) return setError("Indique ton prénom et ton nom.");
     if (!naissance) return setError("Indique ta date de naissance.");
     if (!adresse.trim()) return setError("Indique ton adresse.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailS)) return setError("Ajoute ton email pour recevoir le PDF.");
     setState("loading");
     try {
       const r = await fetch(`/api/signer/${token}`, {
@@ -36,6 +38,7 @@ export default function SignForm({
           last_name: nom.trim(),
           birth_date: naissance,
           address: adresse.trim(),
+          email: emailS.trim(),
         }),
       });
       const j = await r.json();
@@ -75,6 +78,7 @@ export default function SignForm({
           <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} className={`${inp} mt-1`} />
         </label>
         <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Adresse" className={`${inp} mt-2`} />
+        <input type="email" inputMode="email" value={emailS} onChange={(e) => setEmailS(e.target.value)} placeholder="Ton email (pour recevoir le PDF)" className={`${inp} mt-2`} />
       </div>
 
       <button

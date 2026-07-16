@@ -106,7 +106,12 @@ export default async function SignerPage({ params }: { params: { token: string }
         </div>
       </div>
 
-      <p className="mt-4 text-center text-xs text-inksoft">
+      <div className="mt-4 text-center">
+        <a href={`/api/pdf/${a.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+          📄 Télécharger le PDF de la reconnaissance
+        </a>
+      </div>
+      <p className="mt-3 text-center text-xs text-inksoft">
         Signer est <b>gratuit</b> et ne nécessite aucune inscription. L&apos;Ardoise conserve une trace horodatée.
       </p>
     </main>

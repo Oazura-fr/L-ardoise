@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { euros } from "@/lib/montant";
 import { fireConfetti } from "@/lib/confetti";
-import { ArrowLeft, Loader2, FileText, Check, MessageCircle } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Check, MessageCircle, Download } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
 
@@ -207,9 +207,14 @@ export default function ReconnaissanceDetail() {
           </form>
         )}
 
-        <a href={`/signer/${ack.id}`} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
-          <FileText size={15} /> Voir la reconnaissance
-        </a>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+          <a href={`/signer/${ack.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+            <FileText size={15} /> Voir la reconnaissance
+          </a>
+          <a href={`/api/pdf/${ack.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+            <Download size={15} /> Télécharger le PDF
+          </a>
+        </div>
       </div>
 
       {/* Discussion */}
