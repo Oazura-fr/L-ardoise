@@ -96,6 +96,11 @@ export default async function SignerPage({ params }: { params: { token: string }
           <div><div className="text-xs text-inksoft">Échéance</div><div className="font-bold">{a.due_date ? frDate(a.due_date) : "À première demande"}</div></div>
         </div>
 
+        <p className="mt-4 text-xs italic leading-relaxed text-inksoft">
+          Somme exprimée en chiffres et en toutes lettres. Conformément à l&apos;article 1376 du Code civil,
+          en cas de différence, la somme exprimée en toutes lettres prévaut.
+        </p>
+
         <div className="mt-6">
           <SignForm token={a.id} alreadySigned={alreadySigned} debtor={debtor} amount={euros(a.amount_cents)} />
         </div>
