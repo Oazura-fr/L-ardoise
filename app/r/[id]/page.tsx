@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { euros } from "@/lib/montant";
+import { fireConfetti } from "@/lib/confetti";
 import { ArrowLeft, Loader2, FileText, Check, MessageCircle } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
@@ -40,6 +41,7 @@ export default function ReconnaissanceDetail() {
   const [date, setDate] = useState("2026-07-16");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setReady(true); return; }
@@ -90,6 +92,9 @@ export default function ReconnaissanceDetail() {
     if (cents <= 0) return setError("Montant invalide.");
     if (!supabase || !ack) return;
     const capped = Math.min(cents, remaining);
+    const becameSettled = remaining - capped <= 0;
+    const iAmCred = ack.creditor_user_id === uid;
+    const cpName = (iAmCred ? ack.debtor_contact : ack.creditor_contact)?.first_name || "ton proche";
     setBusy(true);
     const { error: err } = await supabase.from("repayments").insert({
       ack_id: ack.id, amount_cents: capped, method, paid_on: date, created_by: uid,
@@ -98,6 +103,13 @@ export default function ReconnaissanceDetail() {
     if (err) return setError(err.message);
     setOpen(false); setAmt("");
     await load();
+    if (becameSettled) {
+      fireConfetti();
+      setFlash(`🎉 Ardoise soldée avec ${cpName} !`);
+    } else {
+      setFlash(`💸 ${euros(capped)} enregistrés`);
+    }
+    setTimeout(() => setFlash(null), 3000);
   }
 
   return (
@@ -121,7 +133,7 @@ export default function ReconnaissanceDetail() {
           {repaid > 0 && (
             <>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/60">
-                <div className="h-full rounded-full bg-credit" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-credit transition-[width] duration-700 ease-out" style={{ width: `${pct}%` }} />
               </div>
               <div className="mt-1.5 text-xs text-inksoft">{euros(repaid)} remboursés sur {euros(ack.amount_cents)} ({pct}%)</div>
             </>
@@ -145,8 +157,8 @@ export default function ReconnaissanceDetail() {
           </button>
         )}
         {settled && (
-          <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-credit-soft py-3 font-bold text-credit">
-            <Check size={18} /> Réglé
+          <div className="mt-5 flex animate-fadeup items-center justify-center gap-2 rounded-2xl bg-credit-soft py-3 font-bold text-credit">
+            <Check size={18} /> Réglé 🎉
           </div>
         )}
 
@@ -208,6 +220,12 @@ export default function ReconnaissanceDetail() {
           <button type="submit" className="grid h-10 w-10 flex-none place-items-center rounded-full bg-accent text-white">➤</button>
         </form>
       </section>
+
+      {flash && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fadeup rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-pop">
+          {flash}
+        </div>
+      )}
     </main>
   );
 }
