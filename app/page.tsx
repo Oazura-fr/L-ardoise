@@ -23,7 +23,7 @@ export default function Home() {
       <section className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 pb-8 pt-8 sm:px-8 md:grid-cols-2 md:pt-14">
         <div className="animate-fadeup">
           <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-semibold text-inksoft">
-            <Sparkles size={13} className="text-accent" /> L&apos;appli des potes qui se prêtent
+            <Sparkles size={13} className="text-accent" /> 100 % gratuit · l&apos;appli des potes qui se prêtent
           </span>
           <h1 className="mt-5 font-display text-[2.6rem] font-bold leading-[1.03] tracking-tight sm:text-6xl">
             Prête à tes proches{" "}
@@ -182,7 +182,7 @@ export default function Home() {
             Personne n&apos;oublie.
           </h2>
           <p className="relative mx-auto mt-4 max-w-md text-white/85">
-            Prête, emprunte, et reste ami. La première ardoise est gratuite.
+            Prête, emprunte, et reste ami. C&apos;est gratuit, et ça le reste.
           </p>
           <a
             href="/inscription"
