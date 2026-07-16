@@ -66,6 +66,7 @@ create table acknowledgments (
   motif               text,
   status              ack_status not null default 'a_signer',
   signature_required  sig_type not null default 'lien_otp',
+  yousign_request_id  text,
   signed_at           timestamptz,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),

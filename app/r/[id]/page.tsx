@@ -63,7 +63,21 @@ export default function ReconnaissanceDetail() {
       .from("acknowledgments")
       .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
-    setAck((data as unknown as Ack) || null);
+    let ackData = data as unknown as Ack | null;
+    // Secours au webhook Yousign : réconcilie une signature avancée en attente
+    if (ackData && ackData.status === "a_signer") {
+      try {
+        const s = await fetch(`/api/yousign/sync/${id}`).then((r) => r.json());
+        if (s?.signed) {
+          const { data: d2 } = await supabase
+            .from("acknowledgments")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .eq("id", id).single();
+          ackData = (d2 as unknown as Ack) || ackData;
+        }
+      } catch { /* réseau : on garde l'état courant */ }
+    }
+    setAck(ackData || null);
     const { data: m } = await supabase
       .from("ack_messages").select("id, sender_user_id, body, created_at")
       .eq("ack_id", id).order("created_at", { ascending: true });

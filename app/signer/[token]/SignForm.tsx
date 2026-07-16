@@ -43,6 +43,10 @@ export default function SignForm({
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Erreur");
+      if (j.yousign_link) {
+        window.location.href = j.yousign_link;
+        return;
+      }
       setState("done");
     } catch (e) {
       setState("idle");
