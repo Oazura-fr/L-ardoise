@@ -58,6 +58,8 @@ export default function Connexion() {
             />
           </label>
 
+          <a href="/mot-de-passe-oublie" className="-mt-1 self-end text-sm font-semibold text-accent">Mot de passe oublié ?</a>
+
           {error && <p className="rounded-xl bg-debit-soft px-4 py-3 text-sm font-medium text-debit">{error}</p>}
 
           <button

@@ -50,6 +50,9 @@ export default function ReconnaissanceDetail() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRep, setLastRep] = useState<{ id: string; amount: number; remaining: number; settled: boolean } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editMotif, setEditMotif] = useState("");
+  const [editDue, setEditDue] = useState("");
 
   const load = useCallback(async () => {
     if (!supabase) { setReady(true); return; }
@@ -67,6 +70,15 @@ export default function ReconnaissanceDetail() {
     setMsgs(m || []);
     setReady(true);
   }, [id, router]);
+
+  function startEdit() { setEditMotif(ack?.motif || ""); setEditDue(ack?.due_date || ""); setEditing(true); }
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase || !ack) return;
+    await supabase.from("acknowledgments").update({ motif: editMotif.trim() || null, due_date: editDue || null }).eq("id", ack.id);
+    setEditing(false);
+    await load();
+  }
 
   async function sendMsg(e: React.FormEvent) {
     e.preventDefault();
@@ -232,6 +244,21 @@ export default function ReconnaissanceDetail() {
             <Download size={15} /> Télécharger le PDF
           </a>
         </div>
+
+        {!editing ? (
+          <button onClick={startEdit} className="mt-3 text-sm font-semibold text-inksoft hover:text-accent">✏️ Modifier le motif / l&apos;échéance</button>
+        ) : (
+          <form onSubmit={saveEdit} className="mt-3 rounded-2xl border border-line bg-paper p-4">
+            <label className="block text-xs font-semibold text-inksoft">Motif
+              <input value={editMotif} onChange={(e) => setEditMotif(e.target.value)} className={inp} /></label>
+            <label className="mt-2 block text-xs font-semibold text-inksoft">Échéance
+              <input type="date" value={editDue} onChange={(e) => setEditDue(e.target.value)} className={inp} /></label>
+            <div className="mt-3 flex gap-2">
+              <button type="submit" className="flex-1 rounded-xl bg-accent py-2.5 font-semibold text-white">Enregistrer</button>
+              <button type="button" onClick={() => setEditing(false)} className="rounded-xl border border-line bg-white px-4 py-2.5 font-semibold text-inksoft">Annuler</button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Discussion */}

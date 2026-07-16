@@ -200,7 +200,11 @@ export default function Home() {
             <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate2 text-xs font-bold text-chalk">€</div>
             <span className="font-semibold text-ink">L&apos;Ardoise</span>
           </div>
-          <span>Fait avec ❤️ pour les potes honnêtes.</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <a href="/legal/cgu" className="hover:text-accent">Conditions d&apos;utilisation</a>
+            <a href="/legal/confidentialite" className="hover:text-accent">Confidentialité</a>
+            <span>Fait avec ❤️ pour les potes honnêtes.</span>
+          </div>
         </div>
       </footer>
     </main>
