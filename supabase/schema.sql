@@ -133,12 +133,13 @@ create table conversations (
 );
 
 create table conversation_participants (
+  id              uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
   user_id         uuid references profiles(id) on delete cascade,
   contact_id      uuid references contacts(id) on delete cascade,
-  last_read_at    timestamptz not null default now(),
-  primary key (conversation_id, coalesce(user_id, contact_id))
+  last_read_at    timestamptz not null default now()
 );
+create unique index on conversation_participants (conversation_id, coalesce(user_id, contact_id));
 
 create table messages (
   id              uuid primary key default gen_random_uuid(),
@@ -194,7 +195,8 @@ create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, email, phone, first_name)
-  values (new.id, coalesce(new.email, ''), coalesce(new.phone, ''),
+  values (new.id, coalesce(new.email, ''),
+          coalesce(new.phone, new.raw_user_meta_data->>'phone', ''),
           coalesce(new.raw_user_meta_data->>'first_name', 'Moi'));
   return new;
 end; $$;
