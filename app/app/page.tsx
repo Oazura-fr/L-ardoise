@@ -191,7 +191,7 @@ function Column({ title, color, rows, empty }: { title: string; color: "credit" 
 function RowLine({ r, muted }: { r: Row; muted?: boolean }) {
   const isCredit = r.direction === "credit";
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-paper">
+    <a href={`/r/${r.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-paper">
       <span className={`grid h-9 w-9 place-items-center rounded-xl text-sm font-bold text-white ${isCredit ? "bg-credit" : "bg-debit"}`}>
         {r.name[0]}
       </span>
@@ -206,6 +206,6 @@ function RowLine({ r, muted }: { r: Row; muted?: boolean }) {
         {isCredit ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
         {euros(r.settled ? r.amount : r.remaining)}
       </div>
-    </div>
+    </a>
   );
 }
