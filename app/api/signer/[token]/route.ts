@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createSignatureLink, yousignConfigured } from "@/lib/yousign";
+import { notifySigned } from "@/lib/notifySigned";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,17 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
           phone_number: phone,
         },
       });
-      await supabaseAdmin.from("acknowledgments").update({ yousign_request_id: requestId }).eq("id", ackId);
+      // On mémorise l'identité du signataire (dont l'email) pour la notification + le PDF signé.
+      await supabaseAdmin.from("acknowledgments").update({
+        yousign_request_id: requestId,
+        signer_identity: {
+          first_name: identity.first_name || null,
+          last_name: identity.last_name || null,
+          birth_date: identity.birth_date || null,
+          address: identity.address || null,
+          email: identity.email || null,
+        },
+      }).eq("id", ackId);
       return NextResponse.json({ yousign_link: link });
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : "Erreur signature avancée" }, { status: 500 });
@@ -71,5 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   };
   const { error: e2 } = await supabaseAdmin.from("signatures").insert({ ack_id: ackId, type: "lien_otp", proof });
   if (e2) return NextResponse.json({ error: e2.message }, { status: 500 });
+  // Envoi du PDF signé aux deux parties (best-effort, ne bloque pas la réponse).
+  await notifySigned(ackId, new URL(req.url).origin);
   return NextResponse.json({ ok: true });
 }

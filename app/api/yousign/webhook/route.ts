@@ -32,6 +32,6 @@ export async function POST(req: NextRequest) {
 
   if (!done || !ackId) return NextResponse.json({ ok: true, done, ackId });
 
-  const signed = await reconcileYousign(ackId, srId);
+  const signed = await reconcileYousign(ackId, srId, new URL(req.url).origin);
   return NextResponse.json({ ok: true, signed });
 }

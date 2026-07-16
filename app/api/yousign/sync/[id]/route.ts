@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Secours au webhook : réconcilie l'état d'une signature avancée à la demande
 // (appelé au chargement de la reconnaissance tant qu'elle est "à signer").
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   if (!supabaseAdmin) return NextResponse.json({ signed: false });
   const ackId = params.id;
 
@@ -21,6 +21,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ signed: ack?.status === "signee" });
   }
 
-  const signed = await reconcileYousign(ackId, ack.yousign_request_id);
+  const signed = await reconcileYousign(ackId, ack.yousign_request_id, new URL(req.url).origin);
   return NextResponse.json({ signed });
 }
