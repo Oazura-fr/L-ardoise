@@ -119,6 +119,7 @@ export default function Dashboard() {
 
       <div className="mx-auto max-w-3xl px-5">
         {prenom && <p className="text-inksoft">Salut <span className="font-semibold text-ink">{prenom}</span> 👋</p>}
+        <p className="mt-0.5 font-display text-lg italic text-inksoft">« Les bons comptes font les bons amis. »</p>
 
         {/* Solde */}
         <section className="mt-3 rounded-3xl border border-line bg-card p-6 shadow-card">

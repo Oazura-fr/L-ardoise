@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { enLettres, euros, ADV_FEE_CENTS, SEUIL_SIGNATURE_AVANCEE_CENTS, MIN_CENTS, MAX_CENTS } from "@/lib/montant";
-import { ArrowRight, Copy, Check, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, Copy, Check, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
 const SCENARIOS = [
@@ -145,23 +145,31 @@ export default function Creer() {
           {lettres && <span className="text-xs italic text-accent">{lettres}</span>}
         </label>
 
-        {/* Upsell signature avancée (on insiste ≥ 500 €) */}
+        {/* Upsell signature avancée (on insiste + alerte ≥ 500 €) */}
         {eligible && (
           <div className="rounded-2xl border-2 border-accent/40 bg-accent-soft p-4">
-            <label className="flex cursor-pointer items-start gap-3">
-              <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="mt-1 h-5 w-5 accent-[#4C3AE3]" />
-              <span className="text-sm">
-                <span className="flex items-center gap-1.5 font-bold text-ink"><ShieldCheck size={16} className="text-accent" /> Signature électronique avancée (recommandée)</span>
-                <span className="mt-1 block text-inksoft">
-                  Au-dessus de 500 €, protège ton argent avec une signature <b>opposable (eIDAS)</b>. Les <b>{euros(ADV_FEE_CENTS)}</b> sont <b>ajoutés à la dette</b> — c&apos;est {nom || "ton proche"} qui les rembourse.
-                </span>
-              </span>
+            <div className="flex items-center gap-1.5 font-bold text-ink">
+              <ShieldCheck size={17} className="text-accent" /> Montant important — protège ton argent
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-inksoft">
+              <li>✅ Signature <b>opposable en justice</b> (eIDAS avancée), pas un simple clic</li>
+              <li>✅ La preuve solide pour <b>récupérer ton argent</b> en cas de litige</li>
+              <li>✅ Seulement <b>{euros(ADV_FEE_CENTS)}</b>, <b>ajoutés à la dette</b> — c&apos;est {nom || "ton proche"} qui les rembourse</li>
+            </ul>
+            <label className="mt-3 flex cursor-pointer items-center gap-2.5 rounded-xl bg-white/70 px-3 py-2.5">
+              <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="h-5 w-5 accent-[#4C3AE3]" />
+              <span className="text-sm font-bold text-ink">Activer la signature avancée (recommandé)</span>
             </label>
-            {fee > 0 && (
+            {fee > 0 ? (
               <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm">
                 <div className="flex justify-between"><span className="text-inksoft">Principal prêté</span><span className="font-semibold tabular-nums">{euros(principal)}</span></div>
                 <div className="flex justify-between"><span className="text-inksoft">Signature électronique</span><span className="font-semibold tabular-nums">{euros(fee)}</span></div>
                 <div className="mt-1 flex justify-between border-t border-line pt-1 font-bold"><span>Total à rembourser</span><span className="tabular-nums text-accent">{euros(total)}</span></div>
+              </div>
+            ) : (
+              <div className="mt-3 flex items-start gap-2 rounded-xl bg-debit-soft px-3 py-2.5 text-sm text-debit">
+                <AlertTriangle size={17} className="mt-0.5 flex-none" />
+                <span><b>Attention :</b> sans signature avancée, une dette de <b>{euros(principal)}</b> sera bien plus difficile à faire valoir en cas de litige. On te la recommande vraiment.</span>
               </div>
             )}
           </div>
