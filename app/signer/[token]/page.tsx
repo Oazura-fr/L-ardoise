@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { euros } from "@/lib/montant";
+import { euros, ADV_FEE_CENTS } from "@/lib/montant";
 import SignForm from "./SignForm";
 
 function frDate(d: string | null): string {
@@ -31,6 +31,9 @@ export default async function SignerPage({ params }: { params: { token: string }
   const creditor = a.creditor_profile?.first_name || a.creditor_contact?.first_name || "le prêteur";
   const debtor = a.debtor_profile?.first_name || a.debtor_contact?.first_name || "l'emprunteur";
   const alreadySigned = a.status === "signee";
+  const isAdv = a.signature_required === "eidas_avancee";
+  const fee = isAdv ? ADV_FEE_CENTS : 0;
+  const principal = a.amount_cents - fee;
 
   return (
     <main className="mx-auto max-w-lg px-5 py-8">
@@ -42,7 +45,12 @@ export default async function SignerPage({ params }: { params: { token: string }
       {/* Document */}
       <div className="rounded-3xl border border-line bg-card p-7 shadow-card">
         <h1 className="text-center font-display text-sm font-bold uppercase tracking-[0.2em]">Reconnaissance de dette</h1>
-        <div className="mx-auto mt-3 mb-6 h-0.5 w-14 bg-ink" />
+        <div className="mx-auto mt-3 mb-4 h-0.5 w-14 bg-ink" />
+        {isAdv && (
+          <div className="mx-auto mb-5 flex w-fit items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent">
+            🔒 Signature électronique avancée (eIDAS)
+          </div>
+        )}
 
         <p className="text-[15px] leading-relaxed">
           <b>{debtor}</b> reconnaît devoir à <b>{creditor}</b> la somme de{" "}
@@ -54,8 +62,16 @@ export default async function SignerPage({ params }: { params: { token: string }
           {a.motif ? <>, au titre de : <i>{a.motif}</i></> : null}.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-sm">
-          <div><div className="text-xs text-inksoft">Montant</div><div className="font-bold">{euros(a.amount_cents)}</div></div>
+        {isAdv && (
+          <div className="mt-5 rounded-2xl bg-paper p-4 text-sm">
+            <div className="flex justify-between"><span className="text-inksoft">Principal prêté</span><span className="font-semibold tabular-nums">{euros(principal)}</span></div>
+            <div className="flex justify-between"><span className="text-inksoft">Frais de signature électronique</span><span className="font-semibold tabular-nums">{euros(fee)}</span></div>
+            <div className="mt-1 flex justify-between border-t border-line pt-1 font-bold"><span>Total dû</span><span className="tabular-nums">{euros(a.amount_cents)}</span></div>
+          </div>
+        )}
+
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-sm">
+          <div><div className="text-xs text-inksoft">Montant dû</div><div className="font-bold">{euros(a.amount_cents)}</div></div>
           <div><div className="text-xs text-inksoft">Moyen</div><div className="font-bold">{a.method}</div></div>
           <div><div className="text-xs text-inksoft">Date du prêt</div><div className="font-bold">{frDate(a.loan_date)}</div></div>
           <div><div className="text-xs text-inksoft">Échéance</div><div className="font-bold">{a.due_date ? frDate(a.due_date) : "À première demande"}</div></div>

@@ -46,5 +46,13 @@ export function enLettres(n: number): string {
   return out.join(" ");
 }
 
-/** Seuil au-dessus duquel on recommande fortement la signature avancée eIDAS. */
+/** Seuil au-dessus duquel on incite fortement à la signature avancée eIDAS. */
 export const SEUIL_SIGNATURE_AVANCEE_CENTS = 50000; // 500 €
+
+/** Prix facturé pour une signature électronique avancée (eIDAS), ajouté à la dette.
+ *  ~3× le coût de revient réel (~2 € chez Yousign) → marge. */
+export const ADV_FEE_CENTS = 600; // 6 €
+
+/** Bornes de montant autorisées. */
+export const MIN_CENTS = 100; // 1 €
+export const MAX_CENTS = 1_000_000_000; // 10 000 000 €

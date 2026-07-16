@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { enLettres } from "@/lib/montant";
-import { ArrowRight, Copy, Check, Loader2 } from "lucide-react";
+import { enLettres, euros, ADV_FEE_CENTS, SEUIL_SIGNATURE_AVANCEE_CENTS, MIN_CENTS, MAX_CENTS } from "@/lib/montant";
+import { ArrowRight, Copy, Check, Loader2, ShieldCheck } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
+const SCENARIOS = [
+  { e: "🃏", l: "Jeu de cartes", m: "Poker entre potes" },
+  { e: "✈️", l: "Vacances", m: "Vacances entre amis" },
+  { e: "🎂", l: "Anniversaire", m: "Cadeau d'anniversaire" },
+  { e: "🛠️", l: "Projet", m: "Projet commun" },
+];
 
 function WhatsApp({ className }: { className?: string }) {
   return (
@@ -27,6 +33,7 @@ export default function Creer() {
   const [dateLoan, setDateLoan] = useState("2026-07-16");
   const [due, setDue] = useState("");
   const [motif, setMotif] = useState("");
+  const [advanced, setAdvanced] = useState(true); // on insiste : coché par défaut
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -40,52 +47,47 @@ export default function Creer() {
     });
   }, [router]);
 
-  const cents = Math.round((parseFloat((montant || "").replace(",", ".")) || 0) * 100);
-  const lettres = useMemo(() => (cents > 0 ? enLettres(Math.floor(cents / 100)) + " euros" : ""), [cents]);
-  const showAdv = cents >= 50000;
+  const principal = Math.round((parseFloat((montant || "").replace(",", ".")) || 0) * 100);
+  const eligible = principal >= SEUIL_SIGNATURE_AVANCEE_CENTS;
+  const fee = eligible && advanced ? ADV_FEE_CENTS : 0;
+  const total = principal + fee;
+  const lettres = useMemo(() => (total > 0 ? enLettres(Math.floor(total / 100)) + " euros" : ""), [total]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (cents <= 0) return setError("Indique un montant valide.");
+    if (principal < MIN_CENTS) return setError("Le montant doit être d'au moins 1 €.");
+    if (principal > MAX_CENTS) return setError("Le montant maximum est 10 000 000 €.");
     if (!nom.trim()) return setError("Ajoute le prénom du proche.");
     if (!supabase || !uid) return setError("Session expirée, reconnecte-toi.");
 
     setBusy(true);
-    // 1) contact pour la contrepartie
     const { data: contact, error: e1 } = await supabase
-      .from("contacts")
-      .insert({ owner_id: uid, first_name: nom.trim(), phone: tel.trim() || null })
-      .select("id")
-      .single();
+      .from("contacts").insert({ owner_id: uid, first_name: nom.trim(), phone: tel.trim() || null })
+      .select("id").single();
     if (e1 || !contact) { setBusy(false); return setError(e1?.message || "Erreur contact."); }
 
-    // 2) reconnaissance
     const row: Record<string, unknown> = {
       creator_id: uid,
-      amount_cents: cents,
+      amount_cents: total, // dette totale (principal + frais de signature)
       amount_words: lettres,
       method,
       loan_date: dateLoan,
       due_date: due || null,
       motif: motif.trim() || null,
       status: "a_signer",
+      signature_required: fee > 0 ? "eidas_avancee" : "lien_otp",
     };
     if (sens === "pret") { row.creditor_user_id = uid; row.debtor_contact_id = contact.id; }
     else { row.debtor_user_id = uid; row.creditor_contact_id = contact.id; }
 
     const { data: ack, error: e2 } = await supabase
-      .from("acknowledgments")
-      .insert(row)
-      .select("id")
-      .single();
+      .from("acknowledgments").insert(row).select("id").single();
     setBusy(false);
     if (e2 || !ack) return setError(e2?.message || "Erreur reconnaissance.");
-
     setLink(`${window.location.origin}/signer/${ack.id}`);
   }
 
-  // ---- Écran de partage ----
   if (link) {
     const msg = encodeURIComponent(`Salut ${nom} ! Peux-tu valider notre reconnaissance sur L'Ardoise ? C'est gratuit et ça prend 10 s : ${link}`);
     return (
@@ -94,7 +96,6 @@ export default function Creer() {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-credit-soft text-3xl text-credit">✓</div>
           <h1 className="mt-4 font-display text-2xl font-bold">Reconnaissance créée&nbsp;!</h1>
           <p className="mt-2 text-inksoft">Envoie le lien à <b>{nom}</b> pour qu&apos;il/elle signe — gratuitement, sans installer l&apos;app.</p>
-
           <div className="mt-5 flex flex-col gap-3">
             <a href={`https://wa.me/?text=${msg}`} target="_blank" rel="noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3.5 font-semibold text-white">
@@ -115,13 +116,22 @@ export default function Creer() {
     );
   }
 
-  // ---- Formulaire ----
   return (
     <main className="mx-auto max-w-md px-5 py-8">
       <a href="/app" className="text-sm font-semibold text-inksoft">← Mon ardoise</a>
       <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">Nouvelle reconnaissance</h1>
 
-      <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
+      {/* Scénarios rapides */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {SCENARIOS.map((s) => (
+          <button key={s.l} type="button" onClick={() => setMotif(s.m)}
+            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${motif === s.m ? "border-transparent bg-accent text-white" : "border-line bg-white text-inksoft"}`}>
+            {s.e} {s.l}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={submit} className="mt-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-paper p-1.5">
           <button type="button" onClick={() => setSens("pret")}
             className={`rounded-xl py-3 font-bold ${sens === "pret" ? "bg-credit text-white" : "text-inksoft"}`}>💰 Je prête</button>
@@ -130,14 +140,30 @@ export default function Creer() {
         </div>
 
         <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">
-          Montant (€)
+          Montant (€) — de 1 € à 10 000 000 €
           <input inputMode="decimal" value={montant} onChange={(e) => setMontant(e.target.value)} placeholder="100" className={inp} />
           {lettres && <span className="text-xs italic text-accent">{lettres}</span>}
         </label>
 
-        {showAdv && (
-          <div className="rounded-xl bg-amber2-soft px-4 py-3 text-xs text-inksoft">
-            🛡️ Au-dessus de 500 €, on te recommandera la <b>signature avancée</b> (eIDAS) pour protéger ton argent.
+        {/* Upsell signature avancée (on insiste ≥ 500 €) */}
+        {eligible && (
+          <div className="rounded-2xl border-2 border-accent/40 bg-accent-soft p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="mt-1 h-5 w-5 accent-[#4C3AE3]" />
+              <span className="text-sm">
+                <span className="flex items-center gap-1.5 font-bold text-ink"><ShieldCheck size={16} className="text-accent" /> Signature électronique avancée (recommandée)</span>
+                <span className="mt-1 block text-inksoft">
+                  Au-dessus de 500 €, protège ton argent avec une signature <b>opposable (eIDAS)</b>. Les <b>{euros(ADV_FEE_CENTS)}</b> sont <b>ajoutés à la dette</b> — c&apos;est {nom || "ton proche"} qui les rembourse.
+                </span>
+              </span>
+            </label>
+            {fee > 0 && (
+              <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm">
+                <div className="flex justify-between"><span className="text-inksoft">Principal prêté</span><span className="font-semibold tabular-nums">{euros(principal)}</span></div>
+                <div className="flex justify-between"><span className="text-inksoft">Signature électronique</span><span className="font-semibold tabular-nums">{euros(fee)}</span></div>
+                <div className="mt-1 flex justify-between border-t border-line pt-1 font-bold"><span>Total à rembourser</span><span className="tabular-nums text-accent">{euros(total)}</span></div>
+              </div>
+            )}
           </div>
         )}
 
@@ -169,7 +195,7 @@ export default function Creer() {
 
         {error && <p className="rounded-xl bg-debit-soft px-4 py-3 text-sm font-medium text-debit">{error}</p>}
 
-        <p className="text-center text-xs text-inksoft">0,99 € à la création (simulé) · pour le proche, signer reste <b>gratuit</b>.</p>
+        <p className="text-center text-xs text-inksoft">Pour le proche, signer reste <b>gratuit</b>.</p>
         <button type="submit" disabled={busy}
           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop disabled:opacity-60">
           {busy ? <Loader2 size={18} className="animate-spin" /> : <>Créer et faire signer <ArrowRight size={18} /></>}
