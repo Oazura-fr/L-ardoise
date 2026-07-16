@@ -16,12 +16,28 @@ export default function SignForm({
 }) {
   const [state, setState] = useState<"idle" | "loading" | "done">(alreadySigned ? "done" : "idle");
   const [error, setError] = useState<string | null>(null);
+  const [prenom, setPrenom] = useState(debtor && debtor !== "l'emprunteur" ? debtor : "");
+  const [nom, setNom] = useState("");
+  const [naissance, setNaissance] = useState("");
+  const [adresse, setAdresse] = useState("");
 
   async function sign() {
     setError(null);
+    if (!prenom.trim() || !nom.trim()) return setError("Indique ton prénom et ton nom.");
+    if (!naissance) return setError("Indique ta date de naissance.");
+    if (!adresse.trim()) return setError("Indique ton adresse.");
     setState("loading");
     try {
-      const r = await fetch(`/api/signer/${token}`, { method: "POST" });
+      const r = await fetch(`/api/signer/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: prenom.trim(),
+          last_name: nom.trim(),
+          birth_date: naissance,
+          address: adresse.trim(),
+        }),
+      });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Erreur");
       setState("done");
@@ -45,8 +61,22 @@ export default function SignForm({
     );
   }
 
+  const inp = "w-full rounded-xl border border-line bg-white px-4 py-2.5 text-[15px] text-ink outline-none focus:ring-2 focus:ring-accent";
+
   return (
     <>
+      <div className="mb-4 rounded-2xl bg-paper p-4">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-inksoft">Ton identité (pour valider)</div>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" className={inp} />
+          <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" className={inp} />
+        </div>
+        <label className="mt-2 block text-xs font-semibold text-inksoft">Date de naissance
+          <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} className={`${inp} mt-1`} />
+        </label>
+        <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Adresse" className={`${inp} mt-2`} />
+      </div>
+
       <button
         onClick={sign}
         disabled={state === "loading"}
@@ -55,7 +85,7 @@ export default function SignForm({
         {state === "loading" ? <Loader2 size={18} className="animate-spin" /> : <>✍️ Je signe cette reconnaissance</>}
       </button>
       {error && <p className="mt-2 text-center text-sm font-medium text-debit">{error}</p>}
-      <p className="mt-2 text-center text-xs text-inksoft">En signant, {debtor} reconnaît la dette ci-dessus.</p>
+      <p className="mt-2 text-center text-xs text-inksoft">En signant, tu reconnais la dette ci-dessus.</p>
     </>
   );
 }

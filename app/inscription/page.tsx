@@ -6,6 +6,9 @@ import { ArrowRight, Camera, Loader2 } from "lucide-react";
 
 export default function Inscription() {
   const [prenom, setPrenom] = useState("");
+  const [nom, setNom] = useState("");
+  const [naissance, setNaissance] = useState("");
+  const [adresse, setAdresse] = useState("");
   const [email, setEmail] = useState("");
   const [tel, setTel] = useState("");
   const [pass, setPass] = useState("");
@@ -26,6 +29,9 @@ export default function Inscription() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!prenom.trim() || !nom.trim()) return setError("Indique ton prénom et ton nom.");
+    if (!naissance) return setError("Indique ta date de naissance.");
+    if (!adresse.trim()) return setError("Indique ton adresse.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setError("Ajoute une adresse email valide.");
     if (tel.replace(/\D/g, "").length < 10) return setError("Ajoute un numéro de portable valide.");
     if (pass.length < 8) return setError("Le mot de passe doit faire au moins 8 caractères.");
@@ -39,7 +45,15 @@ export default function Inscription() {
     const { data, error: err } = await supabase.auth.signUp({
       email,
       password: pass,
-      options: { data: { first_name: prenom || "Moi", phone: tel } },
+      options: {
+        data: {
+          first_name: prenom.trim() || "Moi",
+          last_name: nom.trim(),
+          phone: tel,
+          birth_date: naissance,
+          address: adresse.trim(),
+        },
+      },
     });
     if (err) {
       setStatus("idle");
@@ -75,7 +89,7 @@ export default function Inscription() {
         ) : (
           <>
             <h1 className="font-display text-3xl font-bold tracking-tight">Crée ton ardoise</h1>
-            <p className="mt-2 text-inksoft">Gratuit. Ton email et ton mobile sécurisent ton compte.</p>
+            <p className="mt-2 text-inksoft">Gratuit. Ton identité complète rend tes reconnaissances valables juridiquement.</p>
 
             <form onSubmit={submit} className="mt-7 flex flex-col gap-4">
               {/* Photo facultative */}
@@ -97,8 +111,19 @@ export default function Inscription() {
                 </div>
               </div>
 
-              <Field label="Prénom">
-                <input value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Ex : Taylan" className={inputCls} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Prénom" req>
+                  <input value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Taylan" className={inputCls} />
+                </Field>
+                <Field label="Nom" req>
+                  <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Coban" className={inputCls} />
+                </Field>
+              </div>
+              <Field label="Date de naissance" req>
+                <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="Adresse" req>
+                <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="12 rue des Lilas, 75011 Paris" className={inputCls} />
               </Field>
               <Field label="Adresse email" req>
                 <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom@email.fr" className={inputCls} />

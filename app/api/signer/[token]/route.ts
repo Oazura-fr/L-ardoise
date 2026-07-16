@@ -20,11 +20,24 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ ok: true, already: true });
   }
 
+  let identity: Record<string, unknown> = {};
+  try {
+    identity = await req.json();
+  } catch {
+    identity = {};
+  }
+
   const proof = {
     via: "lien",
     signed_at: new Date().toISOString(),
     user_agent: req.headers.get("user-agent") || null,
     ip: req.headers.get("x-forwarded-for") || null,
+    signataire: {
+      first_name: identity.first_name || null,
+      last_name: identity.last_name || null,
+      birth_date: identity.birth_date || null,
+      address: identity.address || null,
+    },
   };
 
   const { error: e2 } = await supabaseAdmin

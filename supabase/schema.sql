@@ -24,6 +24,9 @@ create table profiles (
   email       text not null,
   phone       text not null,
   first_name  text not null default 'Moi',
+  last_name   text,
+  birth_date  date,
+  address     text,
   photo_url   text,
   plan        plan_type not null default 'gratuit',
   created_at  timestamptz not null default now(),
@@ -194,10 +197,13 @@ create table payments (
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, phone, first_name)
+  insert into public.profiles (id, email, phone, first_name, last_name, birth_date, address)
   values (new.id, coalesce(new.email, ''),
           coalesce(new.phone, new.raw_user_meta_data->>'phone', ''),
-          coalesce(new.raw_user_meta_data->>'first_name', 'Moi'));
+          coalesce(new.raw_user_meta_data->>'first_name', 'Moi'),
+          new.raw_user_meta_data->>'last_name',
+          nullif(new.raw_user_meta_data->>'birth_date', '')::date,
+          new.raw_user_meta_data->>'address');
   return new;
 end; $$;
 create trigger on_auth_user_created

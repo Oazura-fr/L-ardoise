@@ -18,7 +18,7 @@ export default async function SignerPage({ params }: { params: { token: string }
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
     .select(
-      "id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name), debtor_profile:profiles!debtor_user_id(first_name)"
+      "id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name, last_name, birth_date, address), debtor_profile:profiles!debtor_user_id(first_name, last_name, birth_date, address)"
     )
     .eq("id", params.token)
     .single();
@@ -34,6 +34,17 @@ export default async function SignerPage({ params }: { params: { token: string }
   const isAdv = a.signature_required === "eidas_avancee";
   const fee = isAdv ? ADV_FEE_CENTS : 0;
   const principal = a.amount_cents - fee;
+
+  const fullId = (p: any): string | null => {
+    if (!p) return null;
+    const nom = `${p.first_name || ""} ${p.last_name || ""}`.trim();
+    const parts = [nom];
+    if (p.birth_date) parts.push(`né(e) le ${frDate(p.birth_date)}`);
+    if (p.address) parts.push(`demeurant ${p.address}`);
+    return parts.filter(Boolean).join(", ");
+  };
+  const creditorId = fullId(a.creditor_profile);
+  const debtorId = fullId(a.debtor_profile);
 
   return (
     <main className="mx-auto max-w-lg px-5 py-8">
@@ -61,6 +72,14 @@ export default async function SignerPage({ params }: { params: { token: string }
           Remboursement <b>{a.due_date ? `au plus tard le ${frDate(a.due_date)}` : "à première demande"}</b>
           {a.motif ? <>, au titre de : <i>{a.motif}</i></> : null}.
         </p>
+
+        {(creditorId || debtorId) && (
+          <div className="mt-5 rounded-2xl border border-line bg-paper p-4 text-sm">
+            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-inksoft">Identité des parties</div>
+            {creditorId && <div className="mt-1"><span className="text-inksoft">Créancier : </span><b>{creditorId}</b></div>}
+            {debtorId && <div className="mt-1"><span className="text-inksoft">Débiteur : </span><b>{debtorId}</b></div>}
+          </div>
+        )}
 
         {isAdv && (
           <div className="mt-5 rounded-2xl bg-paper p-4 text-sm">
