@@ -4,8 +4,8 @@ export default function Home() {
   return (
     <main className="relative overflow-hidden">
       {/* Blobs décoratifs */}
-      <div aria-hidden className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute top-[38rem] -left-24 h-96 w-96 rounded-full bg-credit/15 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-[42rem] -left-24 h-80 w-80 rounded-full bg-credit/10 blur-3xl" />
 
       {/* Nav */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
@@ -16,7 +16,7 @@ export default function Home() {
           <span className="font-display text-xl font-bold tracking-tight">L&apos;Ardoise</span>
         </div>
         <a
-          href="#creer"
+          href="/inscription"
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
         >
           Créer mon ardoise
@@ -43,8 +43,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
-              id="creer"
-              href="#"
+              href="/inscription"
               className="inline-flex items-center gap-2 rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop transition-transform hover:-translate-y-0.5"
             >
               Créer ma première ardoise <ArrowRight size={18} />
@@ -139,7 +138,7 @@ export default function Home() {
               petite carte à partager. 🐌
             </p>
             <a
-              href="#"
+              href="/inscription"
               className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop transition-transform hover:-translate-y-0.5"
             >
               Commencer gratuitement <ArrowRight size={18} />
@@ -190,7 +189,7 @@ export default function Home() {
             Prête, emprunte, et reste ami. La première ardoise est gratuite.
           </p>
           <a
-            href="#"
+            href="/inscription"
             className="relative mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 font-semibold text-accent transition-transform hover:-translate-y-0.5"
           >
             Créer mon ardoise <ArrowRight size={18} />
@@ -226,7 +225,7 @@ function Feature({
   return (
     <div className="text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={img} alt="" className="mx-auto h-40 w-40 object-contain" />
+      <img src={img} alt="" className="mx-auto h-44 w-44 object-contain" />
       <h3 className="mt-2 font-display text-xl font-bold">{title}</h3>
       <p className="mx-auto mt-2 max-w-xs text-sm text-inksoft">{text}</p>
       {badge ? <div className="mt-3 flex justify-center">{badge}</div> : null}
