@@ -9,8 +9,16 @@ export const metadata: Metadata = {
     "L'appli des potes qui se prêtent. Une reconnaissance de dette signée en un clic, une échéance, des relances qui évitent le malaise. Fun à utiliser, sérieuse sur le fond.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/apple-touch-icon.png" }],
+    // favicon.ico = indispensable : c'est ce que prennent les navigateurs qui créent
+    // un simple RACCOURCI au lieu d'installer la PWA. Sans lui, ils fabriquent une
+    // icône avec la 1re lettre du nom (le fameux « L »).
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
