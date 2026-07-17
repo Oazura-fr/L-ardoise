@@ -17,6 +17,7 @@ type Ack = {
   due_date: string | null;
   motif: string | null;
   status: string;
+  creator_id: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
   repayments: { id: string; amount_cents: number; method: string; paid_on: string }[];
@@ -53,6 +54,9 @@ export default function ReconnaissanceDetail() {
   const [editing, setEditing] = useState(false);
   const [editMotif, setEditMotif] = useState("");
   const [editDue, setEditDue] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setReady(true); return; }
@@ -61,7 +65,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     let ackData = data as unknown as Ack | null;
     // Secours au webhook Yousign : réconcilie une signature avancée en attente
@@ -71,7 +75,7 @@ export default function ReconnaissanceDetail() {
         if (s?.signed) {
           const { data: d2 } = await supabase
             .from("acknowledgments")
-            .select("id, amount_cents, method, loan_date, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
             .eq("id", id).single();
           ackData = (d2 as unknown as Ack) || ackData;
         }
@@ -92,6 +96,18 @@ export default function ReconnaissanceDetail() {
     await supabase.from("acknowledgments").update({ motif: editMotif.trim() || null, due_date: editDue || null }).eq("id", ack.id);
     setEditing(false);
     await load();
+  }
+
+  // Suppression : réservée au créateur (RLS "ack suppression par createur").
+  // Les remboursements, signatures et messages liés partent en cascade.
+  async function removeAck() {
+    if (!supabase || !ack) return;
+    setDelError(null);
+    setDelBusy(true);
+    const { error: e } = await supabase.from("acknowledgments").delete().eq("id", ack.id);
+    setDelBusy(false);
+    if (e) { setDelError(e.message); return; }
+    router.replace("/app");
   }
 
   async function sendMsg(e: React.FormEvent) {
@@ -260,7 +276,12 @@ export default function ReconnaissanceDetail() {
         </div>
 
         {!editing ? (
-          <button onClick={startEdit} className="mt-3 text-sm font-semibold text-inksoft hover:text-accent">✏️ Modifier le motif / l&apos;échéance</button>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button onClick={startEdit} className="text-sm font-semibold text-inksoft hover:text-accent">✏️ Modifier le motif / l&apos;échéance</button>
+            {ack.creator_id === uid && (
+              <button onClick={() => { setConfirmDel(true); setDelError(null); }} className="text-sm font-semibold text-inksoft hover:text-debit">🗑️ Supprimer</button>
+            )}
+          </div>
         ) : (
           <form onSubmit={saveEdit} className="mt-3 rounded-2xl border border-line bg-paper p-4">
             <label className="block text-xs font-semibold text-inksoft">Motif
@@ -272,6 +293,24 @@ export default function ReconnaissanceDetail() {
               <button type="button" onClick={() => setEditing(false)} className="rounded-xl border border-line bg-white px-4 py-2.5 font-semibold text-inksoft">Annuler</button>
             </div>
           </form>
+        )}
+
+        {confirmDel && (
+          <div className="mt-3 rounded-2xl border border-debit bg-debit-soft p-4">
+            <div className="font-bold text-debit">Supprimer cette reconnaissance ?</div>
+            <p className="mt-1 text-sm text-inksoft">
+              {ack.status === "signee"
+                ? <>Elle est <b>déjà signée</b> : tu vas effacer une preuve, ainsi que l&apos;historique des remboursements et la discussion. Cette action est <b>définitive</b>.</>
+                : <>Elle sera effacée définitivement (et le lien de signature ne marchera plus). Tu pourras la recréer proprement.</>}
+            </p>
+            {delError && <p className="mt-2 text-sm font-medium text-debit">{delError}</p>}
+            <div className="mt-3 flex gap-2">
+              <button onClick={removeAck} disabled={delBusy} className="flex-1 rounded-xl bg-debit py-2.5 font-semibold text-white disabled:opacity-60">
+                {delBusy ? "Suppression…" : "Oui, supprimer"}
+              </button>
+              <button onClick={() => setConfirmDel(false)} className="rounded-xl border border-line bg-white px-4 py-2.5 font-semibold text-inksoft">Annuler</button>
+            </div>
+          </div>
         )}
       </div>
 

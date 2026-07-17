@@ -23,13 +23,15 @@ function clean(s: string): string {
     .replace(/[–—]/g, "-");
 }
 
-function idFromParts(p: any): string | null {
+function idFromParts(p: any, phone?: string | null): string | null {
   if (!p) return null;
   const nom = `${p.first_name || ""} ${p.last_name || ""}`.trim();
   if (!nom) return null;
   const parts = [nom];
   if (p.birth_date) parts.push(`né(e) le ${frDate(p.birth_date)}`);
   if (p.address) parts.push(`demeurant ${p.address}`);
+  const tel = p.phone || phone;
+  if (tel) parts.push(`tél. ${tel}`);
   return parts.join(", ");
 }
 
@@ -57,7 +59,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on), creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address)")
+    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on), creditor_contact:contacts!creditor_contact_id(first_name,phone), debtor_contact:contacts!debtor_contact_id(first_name,phone), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address,phone), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address,phone)")
     .eq("id", params.token)
     .single();
   if (!ack) return NextResponse.json({ error: "introuvable" }, { status: 404 });
@@ -67,10 +69,13 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     .from("signatures").select("proof, signed_at, type").eq("ack_id", params.token)
     .order("signed_at", { ascending: false }).limit(1).maybeSingle();
 
-  const creditor = idFromParts(a.creditor_profile) || a.creditor_contact?.first_name || "le prêteur";
+  const creditor =
+    idFromParts(a.creditor_profile, a.creditor_contact?.phone) ||
+    a.creditor_contact?.first_name ||
+    "le prêteur";
   const debtor =
-    idFromParts(a.debtor_profile) ||
-    idFromParts(sig?.proof?.signataire) ||
+    idFromParts(a.debtor_profile, a.debtor_contact?.phone) ||
+    idFromParts(sig?.proof?.signataire, a.debtor_contact?.phone) ||
     a.debtor_contact?.first_name ||
     "l'emprunteur";
   const creditorName = creditor.split(",")[0];

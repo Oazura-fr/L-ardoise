@@ -269,6 +269,11 @@ create policy "ack créée par soi" on acknowledgments for insert
 create policy "ack modifiable par créateur/créancier" on acknowledgments for update
   using (auth.uid() in (creator_id, creditor_user_id));
 
+-- Suppression réservée au créateur (corriger une erreur de saisie).
+-- Remboursements / signatures / messages / relances partent en cascade.
+create policy "ack suppression par createur" on acknowledgments for delete
+  using (creator_id = auth.uid());
+
 create or replace function can_access_ack(a uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select exists (

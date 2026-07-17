@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { euros } from "@/lib/montant";
 import { Plus, LogOut, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import InstallCta from "@/components/InstallCta";
 
 type Ack = {
   id: string;
@@ -172,6 +173,8 @@ export default function Dashboard() {
       >
         <Plus size={20} /> Nouvelle reconnaissance
       </a>
+      <div className="mt-6"><InstallCta label="Installer L'Ardoise sur mon téléphone" /></div>
+
       <BottomNav />
     </main>
   );

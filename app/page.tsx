@@ -16,7 +16,10 @@ export default function Home() {
           </div>
           <span className="font-display text-xl font-bold tracking-tight">L&apos;Ardoise</span>
         </div>
-        <AuthCta className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5" />
+        <div className="flex items-center gap-2 sm:gap-4">
+          <AuthCta variant="login" className="text-sm font-semibold text-inksoft transition-colors hover:text-accent" />
+          <AuthCta className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5" />
+        </div>
       </header>
 
       {/* Hero */}

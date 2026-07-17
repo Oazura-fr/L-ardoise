@@ -58,6 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
           birth_date: identity.birth_date || null,
           address: identity.address || null,
           email: identity.email || null,
+          phone: identity.phone || null,
         },
       }).eq("id", ackId);
       return NextResponse.json({ yousign_link: link });
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       birth_date: identity.birth_date || null,
       address: identity.address || null,
       email: identity.email || null,
+      phone: identity.phone || null,
     },
   };
   const { error: e2 } = await supabaseAdmin.from("signatures").insert({ ack_id: ackId, type: "lien_otp", proof });

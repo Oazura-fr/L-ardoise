@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function AuthCta({ className }: { className?: string }) {
+/**
+ * variant "cta"   → "Créer mon ardoise" (ou "Mon ardoise" si connecté)
+ * variant "login" → "Se connecter" (masqué si déjà connecté)
+ */
+export default function AuthCta({ className, variant = "cta" }: { className?: string; variant?: "cta" | "login" }) {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -16,6 +20,11 @@ export default function AuthCta({ className }: { className?: string }) {
       }
     });
   }, []);
+
+  if (variant === "login") {
+    if (loggedIn !== false) return null; // rien tant qu'on ne sait pas, ni si déjà connecté
+    return <a href="/connexion" className={className}>Se connecter</a>;
+  }
 
   const href = loggedIn ? "/app" : "/inscription";
   const label = loggedIn ? "Mon ardoise" : "Créer mon ardoise";

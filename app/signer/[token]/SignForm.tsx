@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Check } from "lucide-react";
+import InstallCta from "@/components/InstallCta";
 
 export default function SignForm({
   token,
@@ -21,6 +22,7 @@ export default function SignForm({
   const [naissance, setNaissance] = useState("");
   const [adresse, setAdresse] = useState("");
   const [emailS, setEmailS] = useState("");
+  const [tel, setTel] = useState("");
 
   async function sign() {
     setError(null);
@@ -28,6 +30,7 @@ export default function SignForm({
     if (!naissance) return setError("Indique ta date de naissance.");
     if (!adresse.trim()) return setError("Indique ton adresse.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailS)) return setError("Ajoute ton email pour recevoir le PDF.");
+    if (tel.replace(/\D/g, "").length < 9) return setError("Indique ton numéro de téléphone.");
     setState("loading");
     try {
       const r = await fetch(`/api/signer/${token}`, {
@@ -39,6 +42,7 @@ export default function SignForm({
           birth_date: naissance,
           address: adresse.trim(),
           email: emailS.trim(),
+          phone: tel.trim(),
         }),
       });
       const j = await r.json();
@@ -56,15 +60,31 @@ export default function SignForm({
 
   if (state === "done") {
     return (
-      <div className="rounded-2xl bg-credit-soft px-5 py-4 text-center">
-        <div className="mx-auto mb-1 grid h-10 w-10 place-items-center rounded-full bg-credit text-xl text-white">
-          <Check size={20} />
+      <>
+        <div className="rounded-2xl bg-credit-soft px-5 py-4 text-center">
+          <div className="mx-auto mb-1 grid h-10 w-10 place-items-center rounded-full bg-credit text-xl text-white">
+            <Check size={20} />
+          </div>
+          <div className="font-display text-lg font-bold text-credit">Reconnaissance signée</div>
+          <p className="mt-1 text-sm text-inksoft">
+            Merci ! Ton engagement de <b>{amount}</b> est enregistré avec une trace horodatée.
+          </p>
         </div>
-        <div className="font-display text-lg font-bold text-credit">Reconnaissance signée</div>
-        <p className="mt-1 text-sm text-inksoft">
-          Merci ! Ton engagement de <b>{amount}</b> est enregistré avec une trace horodatée.
-        </p>
-      </div>
+
+        {/* Le signataire vient de s'engager : c'est le meilleur moment pour l'embarquer. */}
+        <div className="mt-4 rounded-2xl border border-line bg-card p-5 text-center shadow-card">
+          <div className="font-display text-base font-bold">Garde un œil sur ton ardoise 👀</div>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-inksoft">
+            Installe L&apos;Ardoise pour suivre ce que tu dois, être prévenu à l&apos;échéance, et prêter à ton tour. C&apos;est gratuit.
+          </p>
+          <div className="mt-3">
+            <InstallCta label="Installer l'app" />
+          </div>
+          <a href="/inscription" className="mt-3 inline-block text-sm font-semibold text-accent">
+            Créer mon ardoise gratuitement →
+          </a>
+        </div>
+      </>
     );
   }
 
@@ -83,6 +103,7 @@ export default function SignForm({
         </label>
         <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Adresse" className={`${inp} mt-2`} />
         <input type="email" inputMode="email" value={emailS} onChange={(e) => setEmailS(e.target.value)} placeholder="Ton email (pour recevoir le PDF)" className={`${inp} mt-2`} />
+        <input type="tel" inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Ton téléphone" className={`${inp} mt-2`} />
       </div>
 
       <button
