@@ -114,7 +114,7 @@ export default function Creer() {
     else { row.debtor_user_id = uid; row.creditor_contact_id = contact.id; }
 
     const { data: ack, error: e2 } = await supabase
-      .from("acknowledgments").insert(row).select("id").single();
+      .from("acknowledgments").insert(row).select("id, sign_token").single();
     setBusy(false);
     if (e2 || !ack) return setError(e2?.message || "Erreur reconnaissance.");
     // Rattachement immédiat si le proche a déjà un compte : la reconnaissance
@@ -131,7 +131,7 @@ export default function Creer() {
         } catch { /* le rattachement se refera à la signature */ }
       }
     }
-    setLink(`${window.location.origin}/signer/${ack.id}`);
+    setLink(`${window.location.origin}/signer/${(ack as { sign_token: string }).sign_token}`);
   }
 
   if (link) {

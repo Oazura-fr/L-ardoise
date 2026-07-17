@@ -6,6 +6,10 @@ import { linkSignerToAccount } from "@/lib/linkSigner";
 
 export const runtime = "nodejs";
 
+// Le jeton de signature n'est PAS un UUID : comparer id.eq.<jeton> fait echouer
+// toute la requete PostgREST. On choisit donc la colonne selon la forme de la cle.
+const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function toE164(phone: string | null | undefined): string | null {
@@ -18,15 +22,34 @@ function toE164(phone: string | null | undefined): string | null {
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   if (!supabaseAdmin) return NextResponse.json({ error: "Service indisponible" }, { status: 503 });
-  const ackId = params.token;
 
+  // Le lien porte un jeton SECRET (sign_token). On accepte encore l'id pour les
+  // liens deja partages, mais le jeton est desormais la voie normale.
+  const key = params.token;
   const { data: ack, error } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, status, signature_required, motif, debtor_contact:contacts!debtor_contact_id(phone), creditor_contact:contacts!creditor_contact_id(phone)")
-    .eq("id", ackId)
-    .single();
+    .select("id, status, signature_required, motif, creator_id, sign_expires_at, debtor_contact:contacts!debtor_contact_id(phone), creditor_contact:contacts!creditor_contact_id(phone)")
+    .eq(EST_UUID.test(key) ? "id" : "sign_token", key)
+    .maybeSingle();
   if (error || !ack) return NextResponse.json({ error: "Reconnaissance introuvable" }, { status: 404 });
+  const ackId = (ack as any).id;
   if (ack.status === "signee") return NextResponse.json({ ok: true, already: true });
+
+  // Lien expire : on ne signe plus.
+  const exp = (ack as any).sign_expires_at;
+  if (exp && new Date(exp) < new Date()) {
+    return NextResponse.json({ error: "Ce lien de signature a expiré. Demande à ton proche de t'en renvoyer un." }, { status: 410 });
+  }
+
+  // AUTO-SIGNATURE INTERDITE : le createur ne peut pas signer a la place de son
+  // proche (sinon il fabrique une dette contre quelqu'un qui n'a rien signe).
+  const authz = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (authz) {
+    const { data: auth } = await supabaseAdmin.auth.getUser(authz);
+    if (auth?.user?.id && auth.user.id === (ack as any).creator_id) {
+      return NextResponse.json({ error: "Tu ne peux pas signer une reconnaissance que tu as créée toi-même." }, { status: 403 });
+    }
+  }
 
   let identity: Record<string, any> = {};
   try { identity = await req.json(); } catch { identity = {}; }

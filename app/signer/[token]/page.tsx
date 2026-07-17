@@ -11,6 +11,9 @@ function frDate(d: string | null): string {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Le jeton n'est pas un UUID : on choisit la colonne selon la forme de la cle.
+const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function SignerPage({ params }: { params: { token: string } }) {
   if (!supabaseAdmin) {
     return <Center>Service momentanément indisponible.</Center>;
@@ -21,8 +24,8 @@ export default async function SignerPage({ params }: { params: { token: string }
     .select(
       "id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name, last_name, birth_date, address, phone), debtor_profile:profiles!debtor_user_id(first_name, last_name, birth_date, address, phone)"
     )
-    .eq("id", params.token)
-    .single();
+    .eq(EST_UUID.test(params.token) ? "id" : "sign_token", params.token)
+    .maybeSingle();
 
   if (!ack) {
     return <Center>Cette reconnaissance n&apos;existe pas ou le lien a expiré.</Center>;

@@ -18,6 +18,7 @@ type Ack = {
   motif: string | null;
   status: string;
   signed_at: string | null;
+  sign_token: string | null;
   creator_id: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
@@ -68,7 +69,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, sign_token, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     let ackData = data as unknown as Ack | null;
     // Secours au webhook Yousign : réconcilie une signature avancée en attente
@@ -78,7 +79,7 @@ export default function ReconnaissanceDetail() {
         if (s?.signed) {
           const { data: d2 } = await supabase
             .from("acknowledgments")
-            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, sign_token, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
             .eq("id", id).single();
           ackData = (d2 as unknown as Ack) || ackData;
         }
@@ -268,6 +269,16 @@ export default function ReconnaissanceDetail() {
           {settled && <Event mk="✓" bg="bg-credit" t="Soldé 🎉" d="Ardoise effacée" v="" />}
         </div>
 
+        {!ack.signed_at && ack.sign_token && (
+          <a
+            href={waLink(cpPhone, `Salut ${cp} ! Peux-tu valider notre reconnaissance de ${euros(ack.amount_cents)} sur L'Ardoise ? C'est gratuit et ça prend 10 s : ${typeof window !== "undefined" ? window.location.origin : ""}/signer/${ack.sign_token}`)}
+            target="_blank" rel="noreferrer"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-3.5 font-semibold text-white shadow-pop"
+          >
+            📨 Renvoyer le lien de signature à {cp}
+          </a>
+        )}
+
         {/* Remboursements déclarés, en attente de l'accord de celui qui encaisse */}
         {aConfirmer.length > 0 && (
           <div className="mt-5 rounded-2xl border border-amber2 bg-amber2-soft p-4">
@@ -386,7 +397,7 @@ export default function ReconnaissanceDetail() {
         )}
 
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-          <a href={`/signer/${ack.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+          <a href={`/signer/${ack.sign_token || ack.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
             <FileText size={15} /> Voir la reconnaissance
           </a>
           <a href={`/api/pdf/${ack.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
