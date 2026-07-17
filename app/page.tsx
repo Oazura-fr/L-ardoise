@@ -201,6 +201,7 @@ export default function Home() {
             <span className="font-semibold text-ink">L&apos;Ardoise</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <a href="/legal/mentions" className="hover:text-accent">Mentions légales</a>
             <a href="/legal/cgu" className="hover:text-accent">Conditions d&apos;utilisation</a>
             <a href="/legal/confidentialite" className="hover:text-accent">Confidentialité</a>
             <span>Fait avec ❤️ pour les potes honnêtes.</span>
