@@ -1,12 +1,13 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
+import BackLink from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "Mentions légales — L'Ardoise" };
 
 export default function Mentions() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-10">
-      <a href="/" className="text-sm font-semibold text-accent">← Accueil</a>
+      <BackLink />
       <h1 className="mt-4 font-display text-3xl font-bold tracking-tight">Mentions légales</h1>
       <p className="mt-2 text-sm text-inksoft">Dernière mise à jour : juillet 2026 · <i>Modèle à compléter et à faire valider par un juriste avant le lancement.</i></p>
 

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { euros, ADV_FEE_CENTS } from "@/lib/montant";
 import SignForm from "./SignForm";
+import BackLink from "@/components/BackLink";
 
 function frDate(d: string | null): string {
   if (!d) return "à première demande";
@@ -49,10 +50,12 @@ export default async function SignerPage({ params }: { params: { token: string }
 
   return (
     <main className="mx-auto max-w-lg px-5 py-8">
-      <div className="mb-6 flex items-center justify-center gap-2">
+      {/* Retour obligatoire : en PWA installée il n'y a pas de bouton Précédent. */}
+      <div className="mb-4"><BackLink /></div>
+      <a href="/" className="mb-6 flex items-center justify-center gap-2">
         <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate2 font-display text-lg font-bold text-chalk">€</div>
         <span className="font-display text-lg font-bold">L&apos;Ardoise</span>
-      </div>
+      </a>
 
       {/* Document */}
       <div className="rounded-3xl border border-line bg-card p-7 shadow-card">
