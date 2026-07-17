@@ -18,7 +18,7 @@ type Ack = {
   signed_at: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
-  repayments: { amount_cents: number }[];
+  repayments: { amount_cents: number; confirmed_at: string | null }[];
   debtor_contact: { first_name: string } | null;
   creditor_contact: { first_name: string } | null;
 };
@@ -63,7 +63,7 @@ export default function Dashboard() {
       const { data } = await supabase
         .from("acknowledgments")
         .select(
-          "id, amount_cents, method, due_date, motif, status, signed_at, creditor_user_id, debtor_user_id, repayments(amount_cents), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)"
+          "id, amount_cents, method, due_date, motif, status, signed_at, creditor_user_id, debtor_user_id, repayments(amount_cents, confirmed_at), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)"
         )
         .order("created_at", { ascending: false });
 
@@ -84,7 +84,8 @@ export default function Dashboard() {
       setRows(
         acks.map((a) => {
           const iAmCreditor = a.creditor_user_id === uid;
-          const repaid = (a.repayments || []).reduce((s, r) => s + r.amount_cents, 0);
+          // Seuls les remboursements CONFIRMÉS par le créancier diminuent la dette.
+          const repaid = (a.repayments || []).filter((r) => r.confirmed_at).reduce((s, r) => s + r.amount_cents, 0);
           const remaining = a.amount_cents - repaid;
           const cp = iAmCreditor ? a.debtor_contact : a.creditor_contact;
           const cpUserId = iAmCreditor ? a.debtor_user_id : a.creditor_user_id;

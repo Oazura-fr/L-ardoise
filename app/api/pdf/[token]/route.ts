@@ -59,7 +59,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on), creditor_contact:contacts!creditor_contact_id(first_name,phone), debtor_contact:contacts!debtor_contact_id(first_name,phone), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address,phone), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address,phone)")
+    .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on, confirmed_at), creditor_contact:contacts!creditor_contact_id(first_name,phone), debtor_contact:contacts!debtor_contact_id(first_name,phone), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address,phone), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address,phone)")
     .eq("id", params.token)
     .single();
   if (!ack) return NextResponse.json({ error: "introuvable" }, { status: 404 });
@@ -84,7 +84,11 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   const isAdv = a.signature_required === "eidas_avancee";
   const fee = isAdv ? ADV_FEE_CENTS : 0;
   const principal = a.amount_cents - fee;
-  const reps = ((a.repayments || []) as any[]).slice().sort((x, y) => (x.paid_on || "").localeCompare(y.paid_on || ""));
+  // Le document ne mentionne que les remboursements attestés par le créancier :
+  // une simple déclaration du débiteur n'a aucune valeur probante.
+  const reps = ((a.repayments || []) as any[])
+    .filter((r) => r.confirmed_at)
+    .slice().sort((x, y) => (x.paid_on || "").localeCompare(y.paid_on || ""));
   const repaid = reps.reduce((s, r) => s + r.amount_cents, 0);
   const remaining = a.amount_cents - repaid;
   const signed = a.status === "signee";

@@ -21,7 +21,7 @@ type Ack = {
   creator_id: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
-  repayments: { id: string; amount_cents: number; method: string; paid_on: string }[];
+  repayments: { id: string; amount_cents: number; method: string; paid_on: string; confirmed_at: string | null; created_by: string | null }[];
   debtor_contact: { first_name: string; phone: string | null } | null;
   creditor_contact: { first_name: string; phone: string | null } | null;
 };
@@ -59,6 +59,7 @@ export default function ReconnaissanceDetail() {
   const [confirmDel, setConfirmDel] = useState(false);
   const [delBusy, setDelBusy] = useState(false);
   const [delError, setDelError] = useState<string | null>(null);
+  const [repBusy, setRepBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!supabase) { setReady(true); return; }
@@ -67,7 +68,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     let ackData = data as unknown as Ack | null;
     // Secours au webhook Yousign : réconcilie une signature avancée en attente
@@ -77,7 +78,7 @@ export default function ReconnaissanceDetail() {
         if (s?.signed) {
           const { data: d2 } = await supabase
             .from("acknowledgments")
-            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
             .eq("id", id).single();
           ackData = (d2 as unknown as Ack) || ackData;
         }
@@ -124,6 +125,22 @@ export default function ReconnaissanceDetail() {
     router.replace("/app");
   }
 
+  // Seul le créancier peut confirmer (verrou aussi en base : policy UPDATE).
+  async function confirmRep(id: string) {
+    if (!supabase || !uid) return;
+    setRepBusy(true);
+    await supabase.from("repayments").update({ confirmed_at: new Date().toISOString(), confirmed_by: uid }).eq("id", id);
+    setRepBusy(false);
+    await load();
+  }
+  async function disputeRep(id: string) {
+    if (!supabase) return;
+    setRepBusy(true);
+    await supabase.from("repayments").update({ disputed_at: new Date().toISOString() }).eq("id", id);
+    setRepBusy(false);
+    await load();
+  }
+
   async function sendMsg(e: React.FormEvent) {
     e.preventDefault();
     const body = text.trim();
@@ -144,7 +161,9 @@ export default function ReconnaissanceDetail() {
   const iAmCreditor = ack.creditor_user_id === uid;
   const cp = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.first_name || cpName || "—";
   const cpPhone = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.phone || null;
-  const repaid = ack.repayments.reduce((s, r) => s + r.amount_cents, 0);
+  // Un remboursement n'efface la dette que s'il est ATTESTÉ par celui qui encaisse.
+  const repaid = ack.repayments.filter((r) => r.confirmed_at).reduce((s, r) => s + r.amount_cents, 0);
+  const aConfirmer = ack.repayments.filter((r) => !r.confirmed_at);
   const remaining = ack.amount_cents - repaid;
   const settled = remaining <= 0;
   const pct = Math.min(100, Math.round((repaid / ack.amount_cents) * 100));
@@ -157,8 +176,11 @@ export default function ReconnaissanceDetail() {
     if (cents <= 0) return setError("Montant invalide.");
     if (!supabase || !ack) return;
     const capped = Math.min(cents, remaining);
-    const becameSettled = remaining - capped <= 0;
     const iAmCred = ack.creditor_user_id === uid;
+    // Le créancier atteste avoir reçu -> effectif tout de suite.
+    // Le débiteur ne fait que DÉCLARER -> rien ne bouge tant que l'autre n'a pas confirmé.
+    const effectif = iAmCred || !ack.creditor_user_id;
+    const becameSettled = effectif && remaining - capped <= 0;
     const cpName = (iAmCred ? ack.debtor_contact : ack.creditor_contact)?.first_name || "ton proche";
     setBusy(true);
     const { data: newRep, error: err } = await supabase.from("repayments").insert({
@@ -170,7 +192,11 @@ export default function ReconnaissanceDetail() {
     await load();
     if (becameSettled) fireConfetti();
     void cpName;
-    setLastRep({ id: newRep?.id || "", amount: capped, remaining: Math.max(0, remaining - capped), settled: becameSettled });
+    if (effectif) {
+      setLastRep({ id: newRep?.id || "", amount: capped, remaining: Math.max(0, remaining - capped), settled: becameSettled });
+    } else {
+      setLastRep(null); // l'encart "en attente de confirmation" prend le relais
+    }
   }
 
   return (
@@ -225,17 +251,53 @@ export default function ReconnaissanceDetail() {
         {/* Timeline */}
         <div className="mt-5 space-y-3">
           <Event mk="€" bg={iAmCreditor ? "bg-credit" : "bg-debit"} t={iAmCreditor ? "Prêt accordé" : "Emprunt"} d={`${frDate(ack.loan_date)} · ${ack.method}`} v={euros(ack.amount_cents)} />
-          {[...ack.repayments].sort((a, b) => a.paid_on.localeCompare(b.paid_on)).map((r) => (
+          {[...ack.repayments].filter((r) => r.confirmed_at).sort((a, b) => a.paid_on.localeCompare(b.paid_on)).map((r) => (
             <Event key={r.id} mk="↩" bg="bg-credit" t="Remboursement" d={`${frDate(r.paid_on)} · ${r.method}`} v={`− ${euros(r.amount_cents)}`} href={`/api/recu/${r.id}`} />
           ))}
           {settled && <Event mk="✓" bg="bg-credit" t="Soldé 🎉" d="Ardoise effacée" v="" />}
         </div>
 
+        {/* Remboursements déclarés, en attente de l'accord de celui qui encaisse */}
+        {aConfirmer.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-amber2 bg-amber2-soft p-4">
+            {aConfirmer.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
+                <div>
+                  <div className="text-sm font-bold text-amber2">⏳ {euros(r.amount_cents)} — en attente de confirmation</div>
+                  <div className="text-xs text-inksoft">
+                    {frDate(r.paid_on)} · {r.method} ·{" "}
+                    {iAmCreditor
+                      ? `${cp} déclare t'avoir remboursé`
+                      : `Tu as déclaré ce remboursement — ${cp} doit le confirmer`}
+                  </div>
+                </div>
+                {iAmCreditor && (
+                  <div className="flex gap-2">
+                    <button onClick={() => confirmRep(r.id)} disabled={repBusy}
+                      className="rounded-xl bg-credit px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                      ✓ J&apos;ai bien reçu
+                    </button>
+                    <button onClick={() => disputeRep(r.id)} disabled={repBusy}
+                      className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-semibold text-inksoft">
+                      Contester
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!iAmCreditor && (
+              <p className="mt-1 text-xs text-inksoft">
+                Tant que {cp} n&apos;a pas confirmé, la dette reste inchangée — c&apos;est ce qui protège vos deux comptes.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         {!settled && !open && (
           <button onClick={() => { setAmt(String(Math.round(remaining / 100))); setOpen(true); }}
             className="mt-5 w-full rounded-2xl bg-accent px-6 py-3.5 font-semibold text-white shadow-pop">
-            💸 Enregistrer un remboursement
+            💸 {iAmCreditor ? "Enregistrer un remboursement reçu" : "Déclarer un remboursement"}
           </button>
         )}
         {!settled && iAmCreditor && (
