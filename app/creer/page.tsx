@@ -42,6 +42,7 @@ export default function Creer() {
   const [montant, setMontant] = useState("");
   const [nom, setNom] = useState("");
   const [tel, setTel] = useState("");
+  const [onApp, setOnApp] = useState<{ first_name: string } | null>(null);
   const [method, setMethod] = useState("Virement");
   const [dateLoan, setDateLoan] = useState("2026-07-16");
   const [due, setDue] = useState("");
@@ -65,6 +66,24 @@ export default function Creer() {
   const fee = eligible && advanced ? ADV_FEE_CENTS : 0;
   const total = principal + fee;
   const lettres = useMemo(() => (total > 0 ? enLettres(Math.floor(total / 100)) + " euros" : ""), [total]);
+
+  // Reconnaît un proche déjà inscrit à partir de son numéro, pendant la saisie.
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!supabase || tel.replace(/\D/g, "").length < 9) { setOnApp(null); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      try {
+        const r = await fetch("/api/party", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ phone: tel }),
+        }).then((x) => x.json());
+        setOnApp(r?.onApp ? { first_name: r.first_name } : null);
+      } catch { setOnApp(null); }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [tel]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +117,20 @@ export default function Creer() {
       .from("acknowledgments").insert(row).select("id").single();
     setBusy(false);
     if (e2 || !ack) return setError(e2?.message || "Erreur reconnaissance.");
+    // Rattachement immédiat si le proche a déjà un compte : la reconnaissance
+    // apparaît dans SON ardoise tout de suite, sans attendre la signature.
+    if (tel.trim()) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          await fetch("/api/party", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ phone: tel, ackId: ack.id }),
+          });
+        } catch { /* le rattachement se refera à la signature */ }
+      }
+    }
     setLink(`${window.location.origin}/signer/${ack.id}`);
   }
 
@@ -198,7 +231,12 @@ export default function Creer() {
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">Le proche
             <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Pierre" className={inp} /></label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">Son mobile
-            <input inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="06 12 34 56 78" className={inp} /></label>
+            <input inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="06 12 34 56 78" className={inp} />
+            {onApp && (
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-credit-soft px-2.5 py-1 text-xs font-semibold text-credit">
+                ✓ {onApp.first_name} est déjà sur L&apos;Ardoise — la reconnaissance arrivera directement dans son ardoise
+              </span>
+            )}</label>
         </div>
 
         <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">Moyen de paiement
