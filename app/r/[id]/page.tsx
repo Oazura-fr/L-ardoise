@@ -21,7 +21,7 @@ type Ack = {
   creator_id: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
-  repayments: { id: string; amount_cents: number; method: string; paid_on: string; confirmed_at: string | null; created_by: string | null }[];
+  repayments: { id: string; amount_cents: number; method: string; paid_on: string; confirmed_at: string | null; disputed_at: string | null; created_by: string | null }[];
   debtor_contact: { first_name: string; phone: string | null } | null;
   creditor_contact: { first_name: string; phone: string | null } | null;
 };
@@ -68,7 +68,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     let ackData = data as unknown as Ack | null;
     // Secours au webhook Yousign : réconcilie une signature avancée en attente
@@ -78,7 +78,7 @@ export default function ReconnaissanceDetail() {
         if (s?.signed) {
           const { data: d2 } = await supabase
             .from("acknowledgments")
-            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on, confirmed_at, disputed_at, created_by), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
             .eq("id", id).single();
           ackData = (d2 as unknown as Ack) || ackData;
         }
@@ -129,14 +129,24 @@ export default function ReconnaissanceDetail() {
   async function confirmRep(id: string) {
     if (!supabase || !uid) return;
     setRepBusy(true);
-    await supabase.from("repayments").update({ confirmed_at: new Date().toISOString(), confirmed_by: uid }).eq("id", id);
+    await supabase.from("repayments").update({ confirmed_at: new Date().toISOString(), confirmed_by: uid, disputed_at: null }).eq("id", id);
     setRepBusy(false);
     await load();
   }
   async function disputeRep(id: string) {
     if (!supabase) return;
     setRepBusy(true);
-    await supabase.from("repayments").update({ disputed_at: new Date().toISOString() }).eq("id", id);
+    await supabase.from("repayments").update({ disputed_at: new Date().toISOString(), confirmed_at: null, confirmed_by: null }).eq("id", id);
+    setRepBusy(false);
+    await load();
+  }
+
+  // Le débiteur peut retirer sa déclaration contestée (policy DELETE : auteur
+  // + non confirmée). C'est la sortie du conflit.
+  async function removeRep(id: string) {
+    if (!supabase) return;
+    setRepBusy(true);
+    await supabase.from("repayments").delete().eq("id", id);
     setRepBusy(false);
     await load();
   }
@@ -163,7 +173,8 @@ export default function ReconnaissanceDetail() {
   const cpPhone = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.phone || null;
   // Un remboursement n'efface la dette que s'il est ATTESTÉ par celui qui encaisse.
   const repaid = ack.repayments.filter((r) => r.confirmed_at).reduce((s, r) => s + r.amount_cents, 0);
-  const aConfirmer = ack.repayments.filter((r) => !r.confirmed_at);
+  const aConfirmer = ack.repayments.filter((r) => !r.confirmed_at && !r.disputed_at);
+  const contestes = ack.repayments.filter((r) => r.disputed_at);
   const remaining = ack.amount_cents - repaid;
   const settled = remaining <= 0;
   const pct = Math.min(100, Math.round((repaid / ack.amount_cents) * 100));
@@ -290,6 +301,38 @@ export default function ReconnaissanceDetail() {
                 Tant que {cp} n&apos;a pas confirmé, la dette reste inchangée — c&apos;est ce qui protège vos deux comptes.
               </p>
             )}
+          </div>
+        )}
+
+        {contestes.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-debit bg-debit-soft p-4">
+            {contestes.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
+                <div>
+                  <div className="text-sm font-bold text-debit">⚠️ {euros(r.amount_cents)} — contesté</div>
+                  <div className="text-xs text-inksoft">
+                    {frDate(r.paid_on)} · {r.method} ·{" "}
+                    {iAmCreditor ? "Tu as indiqué ne pas avoir reçu ce montant" : `${cp} indique ne pas avoir reçu ce montant`}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {iAmCreditor ? (
+                    <button onClick={() => confirmRep(r.id)} disabled={repBusy}
+                      className="rounded-xl bg-credit px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                      Finalement, j&apos;ai reçu
+                    </button>
+                  ) : (
+                    <button onClick={() => removeRep(r.id)} disabled={repBusy}
+                      className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-semibold text-inksoft">
+                      Retirer ma déclaration
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            <p className="mt-1 text-xs text-inksoft">
+              Désaccord&nbsp;? Le plus simple : expliquez-vous dans la discussion ci-dessous. La dette reste inchangée en attendant.
+            </p>
           </div>
         )}
 
