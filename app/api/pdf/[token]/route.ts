@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cleanPdfText as clean } from "@/lib/pdfText";
 import { euros, ADV_FEE_CENTS } from "@/lib/montant";
 
 export const runtime = "nodejs";
@@ -14,14 +15,6 @@ function frDate(d: string | null): string {
   return `${day} ${mois[m - 1]} ${y}`;
 }
 
-// WinAnsi ne code pas les espaces fines/insécables ni les guillemets typographiques → on nettoie.
-function clean(s: string): string {
-  return s
-    .replace(/[   ​‑⁠]/g, " ")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, "-");
-}
 
 function idFromParts(p: any, phone?: string | null): string | null {
   if (!p) return null;

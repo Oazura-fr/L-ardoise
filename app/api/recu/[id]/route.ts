@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cleanPdfText as clean } from "@/lib/pdfText";
 import { euros, enLettres } from "@/lib/montant";
 
 export const runtime = "nodejs";
@@ -12,9 +13,6 @@ function frDate(d: string | null): string {
   const [y, m, day] = d.split("-").map(Number);
   const mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
   return `${day} ${mois[m - 1]} ${y}`;
-}
-function clean(s: string): string {
-  return s.replace(/[   ​‑⁠]/g, " ").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-");
 }
 function nameOf(profile: any, contact: any): string {
   if (profile) { const n = `${profile.first_name || ""} ${profile.last_name || ""}`.trim(); if (n) return n; }
