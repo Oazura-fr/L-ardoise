@@ -113,26 +113,26 @@ export default function Inscription() {
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prénom" req>
-                  <input value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Taylan" className={inputCls} />
+                  <input value={prenom} onChange={(e) => setPrenom(e.target.value)} autoComplete="given-name" placeholder="Ton prénom" className={inputCls} />
                 </Field>
                 <Field label="Nom" req>
-                  <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Coban" className={inputCls} />
+                  <input value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="family-name" placeholder="Ton nom" className={inputCls} />
                 </Field>
               </div>
               <Field label="Date de naissance" req>
-                <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} className={inputCls} />
+                <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} autoComplete="bday" className={inputCls} />
               </Field>
               <Field label="Adresse" req>
-                <input value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="12 rue des Lilas, 75011 Paris" className={inputCls} />
+                <input value={adresse} onChange={(e) => setAdresse(e.target.value)} autoComplete="street-address" placeholder="Ton adresse complète" className={inputCls} />
               </Field>
               <Field label="Adresse email" req>
-                <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom@email.fr" className={inputCls} />
+                <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="ton@email.fr" className={inputCls} />
               </Field>
               <Field label="Numéro de portable" req>
-                <input type="tel" inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="06 12 34 56 78" className={inputCls} />
+                <input type="tel" inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} autoComplete="tel" placeholder="Ton portable" className={inputCls} />
               </Field>
               <Field label="Mot de passe" req>
-                <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="8 caractères minimum" className={inputCls} />
+                <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" placeholder="8 caractères minimum" className={inputCls} />
               </Field>
 
               {error && <p className="rounded-xl bg-debit-soft px-4 py-3 text-sm font-medium text-debit">{error}</p>}
