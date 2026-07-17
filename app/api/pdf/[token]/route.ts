@@ -6,6 +6,13 @@ import { euros, ADV_FEE_CENTS } from "@/lib/montant";
 
 export const runtime = "nodejs";
 
+// Le document contient nom, date de naissance, adresse et telephone des DEUX
+// parties. Cette route tourne en service_role (bypass RLS) : on ne la sert donc
+// QUE sur presentation du jeton secret (sign_token), que seules les parties
+// possedent — le proche l'a dans son lien, le createur le lit via RLS.
+// L'UUID seul ne donne plus acces au dossier d'identite.
+
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function frDate(d: string | null): string {
@@ -53,8 +60,8 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
     .select("id, amount_cents, amount_words, method, loan_date, due_date, motif, status, signature_required, creditor_user_id, debtor_user_id, repayments(amount_cents, method, paid_on, confirmed_at), creditor_contact:contacts!creditor_contact_id(first_name,phone), debtor_contact:contacts!debtor_contact_id(first_name,phone), creditor_profile:profiles!creditor_user_id(first_name,last_name,birth_date,address,phone), debtor_profile:profiles!debtor_user_id(first_name,last_name,birth_date,address,phone)")
-    .eq("id", params.token)
-    .single();
+    .eq("sign_token", params.token)
+    .maybeSingle();
   if (!ack) return NextResponse.json({ error: "introuvable" }, { status: 404 });
 
   const a = ack as any;

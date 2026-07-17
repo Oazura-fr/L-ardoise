@@ -39,13 +39,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!supabaseAdmin) return NextResponse.json({ error: "indisponible" }, { status: 503 });
 
   const { data: rep } = await supabaseAdmin
-    .from("repayments").select("id, ack_id, amount_cents, method, paid_on, created_at")
+    .from("repayments").select("id, ack_id, amount_cents, method, paid_on, created_at, confirmed_at, disputed_at")
     .eq("id", params.id).single();
   if (!rep) return NextResponse.json({ error: "introuvable" }, { status: 404 });
+  // Un recu atteste que le creancier A RECU l'argent. Tant qu'il n'a pas
+  // confirme (ou s'il conteste), ce document n'a aucune valeur : on ne le
+  // fabrique pas. Sinon le debiteur s'auto-delivre une quittance.
+  if (!(rep as any).confirmed_at || (rep as any).disputed_at) {
+    return NextResponse.json(
+      { error: "Reçu indisponible : ce remboursement n'a pas encore été confirmé par le créancier." },
+      { status: 409 }
+    );
+  }
 
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, amount_cents, loan_date, motif, creditor_user_id, debtor_user_id, repayments(amount_cents, created_at), creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name,last_name), debtor_profile:profiles!debtor_user_id(first_name,last_name)")
+    .select("id, amount_cents, loan_date, motif, creditor_user_id, debtor_user_id, repayments(amount_cents, created_at, confirmed_at), creditor_contact:contacts!creditor_contact_id(first_name), debtor_contact:contacts!debtor_contact_id(first_name), creditor_profile:profiles!creditor_user_id(first_name,last_name), debtor_profile:profiles!debtor_user_id(first_name,last_name)")
     .eq("id", rep.ack_id).single();
   if (!ack) return NextResponse.json({ error: "introuvable" }, { status: 404 });
 
@@ -54,8 +63,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const creditor = nameOf(a.creditor_profile, a.creditor_contact);
   const debtor = nameOf(a.debtor_profile, a.debtor_contact);
 
+  // Restant du : uniquement les remboursements CONFIRMES, comme la reconnaissance.
   const upTo = ((a.repayments || []) as any[])
-    .filter((x) => (x.created_at || "") <= (r.created_at || ""))
+    .filter((x) => x.confirmed_at && (x.created_at || "") <= (r.created_at || ""))
     .reduce((s, x) => s + x.amount_cents, 0);
   const remainingAfter = a.amount_cents - upTo;
   const soldee = remainingAfter <= 0;

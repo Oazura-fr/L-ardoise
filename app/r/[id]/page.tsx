@@ -400,7 +400,7 @@ export default function ReconnaissanceDetail() {
           <a href={`/signer/${ack.sign_token || ack.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
             <FileText size={15} /> Voir la reconnaissance
           </a>
-          <a href={`/api/pdf/${ack.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+          <a href={`/api/pdf/${ack.sign_token || ack.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
             <Download size={15} /> Télécharger le PDF
           </a>
         </div>

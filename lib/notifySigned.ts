@@ -24,7 +24,7 @@ export async function notifySigned(ackId: string, origin: string): Promise<void>
 
   const { data: ack } = await supabaseAdmin
     .from("acknowledgments")
-    .select("id, amount_cents, motif, creditor_profile:profiles!creditor_user_id(email,first_name), debtor_profile:profiles!debtor_user_id(email,first_name), creditor_contact:contacts!creditor_contact_id(email,first_name), debtor_contact:contacts!debtor_contact_id(email,first_name)")
+    .select("id, amount_cents, motif, sign_token, creditor_profile:profiles!creditor_user_id(email,first_name), debtor_profile:profiles!debtor_user_id(email,first_name), creditor_contact:contacts!creditor_contact_id(email,first_name), debtor_contact:contacts!debtor_contact_id(email,first_name)")
     .eq("id", ackId)
     .single();
   if (!ack) return;
@@ -43,7 +43,8 @@ export async function notifySigned(ackId: string, origin: string): Promise<void>
   // PDF signé en pièce jointe
   let attachments: { name: string; content: string }[] | undefined;
   try {
-    const res = await fetch(`${origin}/api/pdf/${ackId}`);
+    // Le PDF n'est servi que sur jeton secret (l'UUID ne suffit plus).
+    const res = await fetch(`${origin}/api/pdf/${a.sign_token}`);
     if (res.ok) {
       const buf = Buffer.from(await res.arrayBuffer());
       attachments = [{ name: "reconnaissance-lardoise.pdf", content: buf.toString("base64") }];
