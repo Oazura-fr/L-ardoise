@@ -15,6 +15,7 @@ type Ack = {
   due_date: string | null;
   motif: string | null;
   status: string;
+  signed_at: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
   repayments: { amount_cents: number }[];
@@ -32,6 +33,7 @@ type Row = {
   amount: number;
   remaining: number;
   settled: boolean;
+  signed: boolean;
 };
 
 export default function Dashboard() {
@@ -61,7 +63,7 @@ export default function Dashboard() {
       const { data } = await supabase
         .from("acknowledgments")
         .select(
-          "id, amount_cents, method, due_date, motif, status, creditor_user_id, debtor_user_id, repayments(amount_cents), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)"
+          "id, amount_cents, method, due_date, motif, status, signed_at, creditor_user_id, debtor_user_id, repayments(amount_cents), debtor_contact:contacts!debtor_contact_id(first_name), creditor_contact:contacts!creditor_contact_id(first_name)"
         )
         .order("created_at", { ascending: false });
 
@@ -82,6 +84,7 @@ export default function Dashboard() {
             amount: a.amount_cents,
             remaining,
             settled: remaining <= 0,
+            signed: !!a.signed_at,
           };
         })
       );
@@ -102,8 +105,11 @@ export default function Dashboard() {
     );
   }
 
-  const credit = rows.filter((r) => r.direction === "credit" && !r.settled);
-  const debit = rows.filter((r) => r.direction === "debit" && !r.settled);
+  // Une reconnaissance non signée n'est pas une dette : elle ne compte pas
+  // dans le solde et vit dans sa propre section "en attente de signature".
+  const pending = rows.filter((r) => !r.signed && !r.settled);
+  const credit = rows.filter((r) => r.signed && r.direction === "credit" && !r.settled);
+  const debit = rows.filter((r) => r.signed && r.direction === "debit" && !r.settled);
   const settled = rows.filter((r) => r.settled);
   const sumCredit = credit.reduce((s, r) => s + r.remaining, 0);
   const sumDebit = debit.reduce((s, r) => s + r.remaining, 0);
@@ -136,6 +142,7 @@ export default function Dashboard() {
         {/* Solde */}
         <section className="mt-3 rounded-3xl border border-line bg-card p-6 shadow-card">
           <div className="text-xs font-bold uppercase tracking-wide text-inksoft">Ton solde entre proches</div>
+          <div className="text-[11px] text-inksoft">Reconnaissances signées uniquement</div>
           <div className={`mt-1 font-display text-4xl font-bold tabular-nums ${net >= 0 ? "text-credit" : "text-debit"}`}>
             {net >= 0 ? "+ " : "− "}{euros(Math.abs(net))}
           </div>
@@ -156,6 +163,19 @@ export default function Dashboard() {
           <Column title="Je dois" color="debit" rows={debit} empty="Tu ne dois rien à personne 🎉" />
           <Column title="On me doit" color="credit" rows={credit} empty="Personne ne te doit rien… pour l'instant." />
         </div>
+
+        {pending.length > 0 && (
+          <section className="mt-5 rounded-3xl border border-amber2 bg-amber2-soft p-5">
+            <div className="text-sm font-bold text-amber2">⏳ En attente de signature ({pending.length})</div>
+            <p className="mb-2 mt-0.5 text-xs text-inksoft">
+              Ton proche n&apos;a pas encore signé : ce n&apos;est pas (encore) une dette, donc ce n&apos;est
+              <b> pas compté dans ton solde</b>. Ouvre-la pour relancer, corriger ou la supprimer.
+            </p>
+            {pending.map((r) => (
+              <RowLine key={r.id} r={r} muted />
+            ))}
+          </section>
+        )}
 
         {settled.length > 0 && (
           <section className="mt-5 rounded-3xl border border-line bg-card p-5 shadow-card">
