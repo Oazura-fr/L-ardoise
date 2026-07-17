@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createSignatureLink, yousignConfigured } from "@/lib/yousign";
 import { notifySigned } from "@/lib/notifySigned";
+import { linkSignerToAccount } from "@/lib/linkSigner";
 
 export const runtime = "nodejs";
 
@@ -84,6 +85,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   };
   const { error: e2 } = await supabaseAdmin.from("signatures").insert({ ack_id: ackId, type: "lien_otp", proof });
   if (e2) return NextResponse.json({ error: e2.message }, { status: 500 });
+  // Rattacher le signataire à son compte : sans ça il ne verra jamais la
+  // reconnaissance dans son ardoise (policy SELECT sur les user_id).
+  await linkSignerToAccount(ackId, identity.email, identity.phone);
   // Envoi du PDF signé aux deux parties (best-effort, ne bloque pas la réponse).
   await notifySigned(ackId, new URL(req.url).origin);
   return NextResponse.json({ ok: true });

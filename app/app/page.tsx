@@ -68,16 +68,30 @@ export default function Dashboard() {
         .order("created_at", { ascending: false });
 
       const acks = (data as unknown as Ack[]) || [];
+
+      // Le proche peut être un simple contact OU un utilisateur rattaché.
+      // Son profil est protégé : on passe par la vue party_profiles, qui n'expose
+      // que le nom des personnes avec qui on partage une reconnaissance.
+      const cpIds = Array.from(new Set(acks
+        .map((a) => (a.creditor_user_id === uid ? a.debtor_user_id : a.creditor_user_id))
+        .filter((v): v is string => !!v && v !== uid)));
+      const nameById = new Map<string, string>();
+      if (cpIds.length) {
+        const { data: parties } = await supabase.from("party_profiles").select("id, first_name").in("id", cpIds);
+        for (const p of (parties || []) as { id: string; first_name: string }[]) nameById.set(p.id, p.first_name);
+      }
+
       setRows(
         acks.map((a) => {
           const iAmCreditor = a.creditor_user_id === uid;
           const repaid = (a.repayments || []).reduce((s, r) => s + r.amount_cents, 0);
           const remaining = a.amount_cents - repaid;
           const cp = iAmCreditor ? a.debtor_contact : a.creditor_contact;
+          const cpUserId = iAmCreditor ? a.debtor_user_id : a.creditor_user_id;
           return {
             id: a.id,
             direction: iAmCreditor ? "credit" : "debit",
-            name: cp?.first_name || "—",
+            name: cp?.first_name || (cpUserId ? nameById.get(cpUserId) : null) || "—",
             motif: a.motif,
             method: a.method,
             due: a.due_date,

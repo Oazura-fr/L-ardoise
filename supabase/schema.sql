@@ -72,8 +72,11 @@ create table acknowledgments (
   signed_at           timestamptz,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
-  constraint one_creditor check (num_nonnulls(creditor_user_id, creditor_contact_id) = 1),
-  constraint one_debtor   check (num_nonnulls(debtor_user_id,   debtor_contact_id)   = 1)
+  -- >= 1 (et non = 1) : une partie peut être À LA FOIS un contact (nom affiché
+  -- côté créateur) ET un compte rattaché (sans quoi le signataire ne voit jamais
+  -- la reconnaissance dans son ardoise : la policy SELECT teste les *_user_id).
+  constraint one_creditor check (num_nonnulls(creditor_user_id, creditor_contact_id) >= 1),
+  constraint one_debtor   check (num_nonnulls(debtor_user_id,   debtor_contact_id)   >= 1)
 );
 create index on acknowledgments(creator_id);
 create index on acknowledgments(creditor_user_id);
@@ -261,6 +264,19 @@ create policy "profil modifiable par soi" on profiles for update using (id = aut
 
 create policy "contacts à soi" on contacts for all
   using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- Nom des proches avec qui on partage une reconnaissance. Les profils sont
+-- privés (chacun ne lit que le sien) : cette vue expose UNIQUEMENT le prénom/nom
+-- /photo des parties d'une reconnaissance commune — ni email, ni tél, ni adresse.
+create or replace view party_profiles as
+  select p.id, p.first_name, p.last_name, p.photo_url
+  from profiles p
+  where exists (
+    select 1 from acknowledgments a
+    where p.id in (a.creator_id, a.creditor_user_id, a.debtor_user_id)
+      and auth.uid() in (a.creator_id, a.creditor_user_id, a.debtor_user_id)
+  );
+grant select on party_profiles to authenticated;
 
 create policy "ack lisible par les parties" on acknowledgments for select
   using (auth.uid() in (creator_id, creditor_user_id, debtor_user_id));

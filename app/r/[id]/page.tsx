@@ -43,6 +43,7 @@ export default function ReconnaissanceDetail() {
   const [ready, setReady] = useState(false);
   const [msgs, setMsgs] = useState<{ id: string; sender_user_id: string | null; body: string; created_at: string }[]>([]);
   const [text, setText] = useState("");
+  const [cpName, setCpName] = useState<string | null>(null);
 
   // form remboursement
   const [open, setOpen] = useState(false);
@@ -83,6 +84,17 @@ export default function ReconnaissanceDetail() {
       } catch { /* réseau : on garde l'état courant */ }
     }
     setAck(ackData || null);
+    // Nom du proche : soit un contact, soit un utilisateur rattaché (profil protégé
+    // → on passe par la vue party_profiles).
+    if (ackData) {
+      const iAmCred = ackData.creditor_user_id === session.user.id;
+      const otherId = iAmCred ? ackData.debtor_user_id : ackData.creditor_user_id;
+      const hasContact = !!(iAmCred ? ackData.debtor_contact : ackData.creditor_contact);
+      if (!hasContact && otherId && otherId !== session.user.id) {
+        const { data: p } = await supabase.from("party_profiles").select("first_name").eq("id", otherId).maybeSingle();
+        setCpName((p as { first_name: string } | null)?.first_name || null);
+      } else setCpName(null);
+    }
     const { data: m } = await supabase
       .from("ack_messages").select("id, sender_user_id, body, created_at")
       .eq("ack_id", id).order("created_at", { ascending: true });
@@ -130,7 +142,7 @@ export default function ReconnaissanceDetail() {
   if (!ack) return <main className="grid min-h-screen place-items-center text-inksoft">Reconnaissance introuvable.</main>;
 
   const iAmCreditor = ack.creditor_user_id === uid;
-  const cp = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.first_name || "—";
+  const cp = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.first_name || cpName || "—";
   const cpPhone = (iAmCreditor ? ack.debtor_contact : ack.creditor_contact)?.phone || null;
   const repaid = ack.repayments.reduce((s, r) => s + r.amount_cents, 0);
   const remaining = ack.amount_cents - repaid;

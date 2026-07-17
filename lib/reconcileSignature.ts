@@ -2,6 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isSignatureDone } from "@/lib/yousign";
 import { notifySigned } from "@/lib/notifySigned";
+import { linkSignerToAccount } from "@/lib/linkSigner";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -47,6 +48,9 @@ export async function reconcileYousign(ackId: string, requestId: string, origin?
     },
   });
 
+  // Même rattachement que pour la signature par lien (identité mémorisée au moment
+  // de la demande Yousign dans acknowledgments.signer_identity).
+  await linkSignerToAccount(ackId, signataire?.email, signataire?.phone);
   if (origin) await notifySigned(ackId, origin);
   return true;
 }
