@@ -112,26 +112,26 @@ export default function Inscription() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Prénom" req>
+                <Field label="Prénom">
                   <input value={prenom} onChange={(e) => setPrenom(e.target.value)} autoComplete="given-name" placeholder="Ton prénom" className={inputCls} />
                 </Field>
-                <Field label="Nom" req>
+                <Field label="Nom">
                   <input value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="family-name" placeholder="Ton nom" className={inputCls} />
                 </Field>
               </div>
-              <Field label="Date de naissance" req>
+              <Field label="Date de naissance">
                 <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} autoComplete="bday" className={inputCls} />
               </Field>
-              <Field label="Adresse" req>
+              <Field label="Adresse">
                 <input value={adresse} onChange={(e) => setAdresse(e.target.value)} autoComplete="street-address" placeholder="Ton adresse complète" className={inputCls} />
               </Field>
-              <Field label="Adresse email" req>
+              <Field label="Adresse email">
                 <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="ton@email.fr" className={inputCls} />
               </Field>
-              <Field label="Numéro de portable" req>
+              <Field label="Numéro de portable">
                 <input type="tel" inputMode="tel" value={tel} onChange={(e) => setTel(e.target.value)} autoComplete="tel" placeholder="Ton portable" className={inputCls} />
               </Field>
-              <Field label="Mot de passe" req>
+              <Field label="Mot de passe">
                 <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" placeholder="8 caractères minimum" className={inputCls} />
               </Field>
 
@@ -158,11 +158,12 @@ export default function Inscription() {
 const inputCls =
   "w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] text-ink outline-none focus:ring-2 focus:ring-accent";
 
-function Field({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5 text-sm font-semibold text-inksoft">
       <span>
-        {label} {req && <span className="text-debit">obligatoire</span>}
+        {label}
+        {hint && <span className="ml-1.5 font-normal text-xs text-inksoft/60">{hint}</span>}
       </span>
       {children}
     </label>
