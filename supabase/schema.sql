@@ -269,10 +269,14 @@ create policy "ack créée par soi" on acknowledgments for insert
 create policy "ack modifiable par créateur/créancier" on acknowledgments for update
   using (auth.uid() in (creator_id, creditor_user_id));
 
--- Suppression réservée au créateur (corriger une erreur de saisie).
+-- Suppression : par le créateur, UNIQUEMENT tant que ce n'est pas signé
+-- (corriger une erreur de saisie). Une fois signée, la reconnaissance est une
+-- preuve pour les deux parties : plus jamais supprimable. On teste signed_at
+-- (posé une fois pour toutes par le trigger) et pas le statut, qui évolue
+-- ensuite en 'reglee'/'en_retard'.
 -- Remboursements / signatures / messages / relances partent en cascade.
-create policy "ack suppression par createur" on acknowledgments for delete
-  using (creator_id = auth.uid());
+create policy "ack suppression si non signee" on acknowledgments for delete
+  using (creator_id = auth.uid() and signed_at is null);
 
 create or replace function can_access_ack(a uuid)
 returns boolean language sql security definer stable set search_path = public as $$

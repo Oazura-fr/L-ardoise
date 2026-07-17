@@ -17,6 +17,7 @@ type Ack = {
   due_date: string | null;
   motif: string | null;
   status: string;
+  signed_at: string | null;
   creator_id: string | null;
   creditor_user_id: string | null;
   debtor_user_id: string | null;
@@ -65,7 +66,7 @@ export default function ReconnaissanceDetail() {
     setUid(session.user.id);
     const { data } = await supabase
       .from("acknowledgments")
-      .select("id, amount_cents, method, loan_date, due_date, motif, status, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+      .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
       .eq("id", id).single();
     let ackData = data as unknown as Ack | null;
     // Secours au webhook Yousign : réconcilie une signature avancée en attente
@@ -75,7 +76,7 @@ export default function ReconnaissanceDetail() {
         if (s?.signed) {
           const { data: d2 } = await supabase
             .from("acknowledgments")
-            .select("id, amount_cents, method, loan_date, due_date, motif, status, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
+            .select("id, amount_cents, method, loan_date, due_date, motif, status, signed_at, creator_id, creditor_user_id, debtor_user_id, repayments(id, amount_cents, method, paid_on), debtor_contact:contacts!debtor_contact_id(first_name, phone), creditor_contact:contacts!creditor_contact_id(first_name, phone)")
             .eq("id", id).single();
           ackData = (d2 as unknown as Ack) || ackData;
         }
@@ -98,8 +99,9 @@ export default function ReconnaissanceDetail() {
     await load();
   }
 
-  // Suppression : réservée au créateur (RLS "ack suppression par createur").
-  // Les remboursements, signatures et messages liés partent en cascade.
+  // Suppression : créateur uniquement ET tant que ce n'est pas signé.
+  // Une fois signée, c'est une preuve pour les deux parties → verrou en base
+  // (RLS "ack suppression si non signee" : creator_id = auth.uid() and signed_at is null).
   async function removeAck() {
     if (!supabase || !ack) return;
     setDelError(null);
@@ -278,8 +280,14 @@ export default function ReconnaissanceDetail() {
         {!editing ? (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <button onClick={startEdit} className="text-sm font-semibold text-inksoft hover:text-accent">✏️ Modifier le motif / l&apos;échéance</button>
-            {ack.creator_id === uid && (
+            {/* Une reconnaissance signée est une preuve : plus jamais supprimable (verrou aussi en base). */}
+            {ack.creator_id === uid && !ack.signed_at && (
               <button onClick={() => { setConfirmDel(true); setDelError(null); }} className="text-sm font-semibold text-inksoft hover:text-debit">🗑️ Supprimer</button>
+            )}
+            {ack.signed_at && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-inksoft">
+                🔒 Signée : conservée comme preuve, non supprimable
+              </span>
             )}
           </div>
         ) : (
@@ -299,9 +307,8 @@ export default function ReconnaissanceDetail() {
           <div className="mt-3 rounded-2xl border border-debit bg-debit-soft p-4">
             <div className="font-bold text-debit">Supprimer cette reconnaissance ?</div>
             <p className="mt-1 text-sm text-inksoft">
-              {ack.status === "signee"
-                ? <>Elle est <b>déjà signée</b> : tu vas effacer une preuve, ainsi que l&apos;historique des remboursements et la discussion. Cette action est <b>définitive</b>.</>
-                : <>Elle sera effacée définitivement (et le lien de signature ne marchera plus). Tu pourras la recréer proprement.</>}
+              Elle n&apos;est <b>pas encore signée</b> : elle sera effacée définitivement et le lien de signature ne
+              marchera plus. Tu pourras la recréer proprement.
             </p>
             {delError && <p className="mt-2 text-sm font-medium text-debit">{delError}</p>}
             <div className="mt-3 flex gap-2">
