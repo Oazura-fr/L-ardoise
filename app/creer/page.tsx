@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { enLettres, euros, ADV_FEE_CENTS, SEUIL_SIGNATURE_AVANCEE_CENTS, MIN_CENTS, MAX_CENTS } from "@/lib/montant";
+import { enLettresEuros, euros, ADV_FEE_CENTS, SEUIL_SIGNATURE_AVANCEE_CENTS, MIN_CENTS, MAX_CENTS } from "@/lib/montant";
 import { ArrowRight, Copy, Check, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 
 const METHODS = ["Espèces", "Virement", "Chèque", "PayPal", "Lydia"];
@@ -65,7 +65,7 @@ export default function Creer() {
   const eligible = principal >= SEUIL_SIGNATURE_AVANCEE_CENTS;
   const fee = eligible && advanced ? ADV_FEE_CENTS : 0;
   const total = principal + fee;
-  const lettres = useMemo(() => (total > 0 ? enLettres(Math.floor(total / 100)) + " euros" : ""), [total]);
+  const lettres = useMemo(() => (total > 0 ? enLettresEuros(total) : ""), [total]);
 
   // Reconnaît un proche déjà inscrit à partir de son numéro, pendant la saisie.
   useEffect(() => {

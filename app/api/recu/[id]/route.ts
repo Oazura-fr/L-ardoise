@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { cleanPdfText as clean } from "@/lib/pdfText";
-import { euros, enLettres } from "@/lib/montant";
+import { euros, enLettresEuros } from "@/lib/montant";
 
 export const runtime = "nodejs";
 
@@ -59,7 +59,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .reduce((s, x) => s + x.amount_cents, 0);
   const remainingAfter = a.amount_cents - upTo;
   const soldee = remainingAfter <= 0;
-  const words = `${enLettres(Math.floor(r.amount_cents / 100))} euros`;
+  const words = enLettresEuros(r.amount_cents);
 
   const pdf = await PDFDocument.create();
   const PW = 595.28, PH = 841.89;
